@@ -1,0 +1,226 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  TUTOR
+  CUIDADOR
+}
+
+enum ReservaStatus {
+  PROXIMA
+  EM_ANDAMENTO
+  CONCLUIDA
+  CANCELADA
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(TUTOR)
+  phone        String?
+  cep          String?
+  street       String?
+  addressNum   String?
+  complement   String?
+  neighborhood String?
+  city         String?
+  state        String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  pets            Pet[]
+  hostProfile     HostProfile?
+  reservasAsTutor Reserva[]   @relation("TutorReservas")
+  reviews         Review[]
+  paymentCards    PaymentCard[]
+  subscription    Subscription?
+  messages        Message[]
+}
+
+model Pet {
+  id      String  @id @default(cuid())
+  name    String
+  species String
+  breed   String
+  sex     String
+  size    String
+  rg      String?
+
+  birthDate DateTime?
+  photoUrl  String?
+
+  // Saúde
+  vaccinesUpToDate Boolean @default(false)
+  usesMedication   Boolean @default(false)
+  medicationDesc   String?
+  healthCondition  String?
+  foodRestriction  Boolean @default(false)
+  foodRestDesc     String?
+  foodBrand        String?
+
+  // Comportamento
+  behaviorDogs   String?
+  behaviorCats   String?
+  behaviorKids   String?
+  energyLevel    Int?
+  hasEscaped     Boolean @default(false)
+  escapeDesc     String?
+  fearOfNoise    Boolean @default(false)
+  staysAlone     Boolean @default(false)
+  sleepsAlone    Boolean @default(false)
+  neutered       Boolean @default(false)
+  behaviorNotes  String?
+
+  // Emergência
+  emergencyName     String?
+  emergencyPhone    String?
+  emergencyRelation String?
+  vetClinic         String?
+  vetPhone          String?
+  vetAddress        String?
+
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId String
+
+  reservas Reserva[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model HostProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Endereço
+  cep        String
+  city       String
+  street     String
+  number     String
+  complement String?
+
+  // Sobre o espaço
+  housingType String
+  fencedYard  Boolean  @default(false)
+  spaceSize   String
+  spaceDesc   String?
+  spacePhotos String[]
+
+  // Hospedagem
+  hasOtherAnimals  Boolean  @default(false)
+  otherAnimalsDesc String?
+  hasChildren      Boolean  @default(false)
+  childrenAge      String?
+  worksOutside     Boolean  @default(false)
+  maxPets          String   @default("1")
+  acceptedSizes    String[]
+  acceptedSpecies  String[]
+  canAdminMeds     Boolean  @default(false)
+  specialNeedsExp  Boolean  @default(false)
+
+  // Experiência
+  hasHostedBefore   Boolean @default(false)
+  hostingTime       String?
+  experiencedBreeds String?
+  bio               String?
+
+  // Verificação
+  cpf         String?
+  docPhotoUrl String?
+  housePhotos String[]
+
+  // Preço, disponibilidade e stats
+  pricePerDay    Float    @default(150)
+  availableDates String[] @default([])
+  averageRating  Float?
+  reviewCount   Int      @default(0)
+
+  reservas Reserva[]
+  reviews  Review[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Reserva {
+  id      String        @id @default(cuid())
+  status  ReservaStatus @default(PROXIMA)
+  service String        @default("Hospedagem")
+  price   Float
+
+  startDate DateTime
+  endDate   DateTime
+
+  pet   Pet    @relation(fields: [petId], references: [id])
+  petId String
+
+  tutor   User   @relation("TutorReservas", fields: [tutorId], references: [id])
+  tutorId String
+
+  host   HostProfile @relation(fields: [hostId], references: [id])
+  hostId String
+
+  review   Review?
+  messages Message[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PaymentCard {
+  id        String   @id @default(cuid())
+  brand     String
+  last4     String
+  expiry    String
+  holder    String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model Subscription {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startDate DateTime @default(now())
+  endDate   DateTime
+  plan      String   @default("MENSAL")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  reservaId String
+  reserva   Reserva  @relation(fields: [reservaId], references: [id], onDelete: Cascade)
+  senderId  String
+  sender    User     @relation(fields: [senderId], references: [id])
+  text      String
+  createdAt DateTime @default(now())
+}
+
+model Review {
+  id      String @id @default(cuid())
+  rating  Int
+  comment String
+
+  tutor   User   @relation(fields: [tutorId], references: [id])
+  tutorId String
+
+  host   HostProfile @relation(fields: [hostId], references: [id])
+  hostId String
+
+  reserva   Reserva? @relation(fields: [reservaId], references: [id])
+  reservaId String?  @unique
+
+  createdAt DateTime @default(now())
+}

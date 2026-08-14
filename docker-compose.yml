@@ -1,0 +1,57 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: pethouse_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pethouse
+    ports:
+      - "5432:5432"
+    volumes:
+      - pethouse_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pethouse"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.dev
+    container_name: pethouse_api
+    restart: unless-stopped
+    volumes:
+      - ./server:/app
+      - api_node_modules:/app/node_modules
+    env_file:
+      - ./server/.env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/pethouse
+    ports:
+      - "3001:3001"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: sh -c "npx prisma migrate deploy && npm run dev"
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: pethouse_web
+    restart: unless-stopped
+    volumes:
+      - .:/app
+      - web_node_modules:/app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+
+volumes:
+  pethouse_pgdata:
+  api_node_modules:
+  web_node_modules:

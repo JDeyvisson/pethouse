@@ -1,0 +1,148 @@
+﻿@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Color tokens ────────────────────────────────────────────────────────── */
+:root {
+  /* Light mode (default) */
+  --color-bg:        247 246 244;   /* #F7F6F4 warm paper white  */
+  --color-surface:   255 255 255;   /* #FFFFFF                   */
+  --color-surface-2: 241 239 235;   /* #F1EFEB warm light gray   */
+  --color-text:       28  28  30;   /* #1C1C1E near black        */
+  --color-muted:     107 107 111;   /* #6B6B6F medium gray       */
+
+  /* Subtle border / bg layers — flip between modes */
+  --border-subtle:   rgba(0,   0,   0,   0.08);
+  --border-medium:   rgba(0,   0,   0,   0.12);
+  --border-strong:   rgba(0,   0,   0,   0.15);
+  --border-stronger: rgba(0,   0,   0,   0.18);
+  --border-accent:   rgba(0,   0,   0,   0.25);
+  --border-heavy:    rgba(0,   0,   0,   0.35);
+  --bg-subtle:       rgba(0,   0,   0,   0.04);
+  --bg-subtle-md:    rgba(0,   0,   0,   0.06);
+  --bg-subtle-lg:    rgba(0,   0,   0,   0.08);
+
+  --gradient-alpha:  0.06;
+}
+
+.dark {
+  --color-bg:        14  14  16;
+  --color-surface:   22  22  24;
+  --color-surface-2: 28  28  32;
+  --color-text:     245 245 244;
+  --color-muted:    161 161 166;
+
+  --border-subtle:   rgba(255, 255, 255, 0.05);
+  --border-medium:   rgba(255, 255, 255, 0.10);
+  --border-strong:   rgba(255, 255, 255, 0.15);
+  --border-stronger: rgba(255, 255, 255, 0.20);
+  --border-accent:   rgba(255, 255, 255, 0.30);
+  --border-heavy:    rgba(255, 255, 255, 0.40);
+  --bg-subtle:       rgba(255, 255, 255, 0.05);
+  --bg-subtle-md:    rgba(255, 255, 255, 0.08);
+  --bg-subtle-lg:    rgba(255, 255, 255, 0.10);
+
+  --gradient-alpha:  0.12;
+}
+
+/* ─── Base ────────────────────────────────────────────────────────────────── */
+@layer base {
+  * { box-sizing: border-box; }
+
+  /* Use direct CSS-var references so body/html update without Tailwind JIT re-run */
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    background-color: rgb(var(--color-bg));
+    color: rgb(var(--color-text));
+  }
+
+  body {
+    background-color: rgb(var(--color-bg));
+    color: rgb(var(--color-text));
+    background-image: radial-gradient(
+      ellipse at 50% 0%,
+      rgba(94, 139, 126, var(--gradient-alpha)) 0%,
+      transparent 60%
+    );
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  ::-webkit-scrollbar        { width: 4px; }
+  ::-webkit-scrollbar-track  { background: transparent; }
+  ::-webkit-scrollbar-thumb  { background: var(--border-medium); border-radius: 9999px; }
+}
+
+/* ─── Structural shell — always tracks CSS vars, no Tailwind JIT dependency ─ */
+aside, header, main {
+  background-color: inherit;
+}
+
+/* ─── Component classes ──────────────────────────────────────────────────── */
+@layer components {
+  .card {
+    background-color: rgb(var(--color-surface));
+    border-radius: 16px;
+    border: 1px solid var(--border-subtle);
+  }
+
+  .card-2 {
+    background-color: rgb(var(--color-surface-2));
+    border-radius: 16px;
+    border: 1px solid var(--border-subtle);
+  }
+
+  .input-field {
+    @apply w-full rounded-xl px-4 py-3 text-text placeholder-muted focus:outline-none transition-colors;
+    background-color: rgb(var(--color-surface-2));
+    border: 1px solid var(--border-medium);
+  }
+  .input-field:focus { border-color: #5E8B7E; }
+
+  .btn-primary {
+    @apply bg-primary hover:bg-primary-dark text-white rounded-xl px-6 py-3 font-semibold transition-colors;
+  }
+
+  .btn-gradient {
+    background-color: #FF7E5F;
+    @apply text-white rounded-xl px-6 py-3 font-semibold hover:opacity-90 transition-opacity;
+  }
+
+  .btn-outline {
+    @apply rounded-xl px-6 py-3 font-medium transition-colors;
+    border: 1px solid var(--border-stronger);
+    color: rgb(var(--color-muted));
+  }
+  .btn-outline:hover {
+    color: rgb(var(--color-text));
+    border-color: var(--border-accent);
+  }
+
+  .pill {
+    @apply px-3 py-1 rounded-full text-xs font-medium;
+  }
+}
+
+/* ─── Utility classes for adaptive border / bg opacity ───────────────────── */
+@layer utilities {
+  /* Borders */
+  .border-subtle    { border-color: var(--border-subtle);   }
+  .border-medium    { border-color: var(--border-medium);   }
+  .border-strong    { border-color: var(--border-strong);   }
+  .border-stronger  { border-color: var(--border-stronger); }
+  .border-accent    { border-color: var(--border-accent);   }
+  .border-heavy     { border-color: var(--border-heavy);    }
+
+  /* Backgrounds */
+  .bg-subtle        { background-color: var(--bg-subtle);    }
+  .bg-subtle-md     { background-color: var(--bg-subtle-md); }
+  .bg-subtle-lg     { background-color: var(--bg-subtle-lg); }
+
+  /* Hover backgrounds */
+  .hover\:bg-subtle:hover    { background-color: var(--bg-subtle);    }
+  .hover\:bg-subtle-md:hover { background-color: var(--bg-subtle-md); }
+
+  /* Hover borders */
+  .hover\:border-accent:hover  { border-color: var(--border-accent);   }
+  .hover\:border-stronger:hover { border-color: var(--border-stronger); }
+}

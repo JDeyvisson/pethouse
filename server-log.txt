@@ -1,0 +1,5 @@
+
+> pethouse-server@1.0.0 dev
+> tsx watch src/server.ts
+
+🐾 Pet House API rodando em http://localhost:3001
