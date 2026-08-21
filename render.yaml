@@ -5,8 +5,7 @@ services:
     rootDir: server
     plan: free
     buildCommand: npm install && npx prisma generate && npm run build
-    preDeployCommand: npx prisma migrate deploy && npx tsx prisma/seed.ts
-    startCommand: node dist/server.js
+    startCommand: npx prisma migrate deploy && npx tsx prisma/seed.ts && node dist/server.js
     envVars:
       - key: DATABASE_URL
         sync: false
