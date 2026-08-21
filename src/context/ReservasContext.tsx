@@ -40,6 +40,8 @@ interface ReservasContextValue {
   loading: boolean
   addReserva: (r: Reserva) => void
   cancelReserva: (id: string) => Promise<void>
+  startReserva: (id: string) => Promise<void>
+  concludeReserva: (id: string) => Promise<void>
   refresh: () => void
 }
 
@@ -73,10 +75,24 @@ export function ReservasProvider({ children }: { children: ReactNode }) {
     )
   }
 
+  const startReserva = async (id: string) => {
+    await api.patch(`/reservas/${id}/start`)
+    setReservas(prev =>
+      prev.map(r => (r.id === id ? { ...r, status: 'em_andamento' as const } : r))
+    )
+  }
+
+  const concludeReserva = async (id: string) => {
+    await api.patch(`/reservas/${id}/conclude`)
+    setReservas(prev =>
+      prev.map(r => (r.id === id ? { ...r, status: 'concluida' as const } : r))
+    )
+  }
+
   const refresh = () => setTick(t => t + 1)
 
   return (
-    <ReservasContext.Provider value={{ reservas, loading, addReserva, cancelReserva, refresh }}>
+    <ReservasContext.Provider value={{ reservas, loading, addReserva, cancelReserva, startReserva, concludeReserva, refresh }}>
       {children}
     </ReservasContext.Provider>
   )

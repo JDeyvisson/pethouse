@@ -49,7 +49,7 @@ async function main() {
       worksOutside: true,
       maxPets: '2',
       acceptedSizes: ['pequeno', 'medio'],
-      acceptedSpecies: ['cao', 'gato'],
+      acceptedSpecies: ['cachorro', 'gato'],
       canAdminMeds: true,
       specialNeedsExp: false,
       hasHostedBefore: true,

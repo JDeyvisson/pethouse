@@ -27,4 +27,24 @@ export const reservaService = {
     if (reserva.status === 'CONCLUIDA') throw new AppError('CONCLUDED', 'Não é possível cancelar uma reserva concluída', 409)
     return reservaRepository.updateStatus(id, 'CANCELADA')
   },
+
+  async start(id: string, hostUserId: string) {
+    const host = await hostRepository.findByUserId(hostUserId)
+    if (!host) throw new AppError('HOST_NOT_FOUND', 'Perfil de anfitrião não encontrado', 404)
+    const reserva = await reservaRepository.findById(id)
+    if (!reserva) throw new AppError('RESERVA_NOT_FOUND', 'Reserva não encontrada', 404)
+    if (reserva.hostId !== host.id) throw new AppError('FORBIDDEN', 'Acesso negado', 403)
+    if (reserva.status !== 'PROXIMA') throw new AppError('INVALID_STATUS', 'Reserva não está como próxima', 409)
+    return reservaRepository.updateStatus(id, 'EM_ANDAMENTO')
+  },
+
+  async conclude(id: string, hostUserId: string) {
+    const host = await hostRepository.findByUserId(hostUserId)
+    if (!host) throw new AppError('HOST_NOT_FOUND', 'Perfil de anfitrião não encontrado', 404)
+    const reserva = await reservaRepository.findById(id)
+    if (!reserva) throw new AppError('RESERVA_NOT_FOUND', 'Reserva não encontrada', 404)
+    if (reserva.hostId !== host.id) throw new AppError('FORBIDDEN', 'Acesso negado', 403)
+    if (reserva.status !== 'EM_ANDAMENTO') throw new AppError('INVALID_STATUS', 'Reserva não está em andamento', 409)
+    return reservaRepository.updateStatus(id, 'CONCLUIDA')
+  },
 }

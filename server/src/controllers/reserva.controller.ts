@@ -24,4 +24,18 @@ export const reservaController = {
       res.json(reserva)
     } catch (err) { next(err) }
   },
+
+  async start(req: Request, res: Response, next: NextFunction) {
+    try {
+      const reserva = await reservaService.start(req.params.id, req.user!.sub)
+      res.json(reserva)
+    } catch (err) { next(err) }
+  },
+
+  async conclude(req: Request, res: Response, next: NextFunction) {
+    try {
+      const reserva = await reservaService.conclude(req.params.id, req.user!.sub)
+      res.json(reserva)
+    } catch (err) { next(err) }
+  },
 }

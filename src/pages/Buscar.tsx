@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Search, SlidersHorizontal, X } from 'lucide-react'
 import { api } from '../lib/api'
 import type { Sitter } from '../data/sitters'
@@ -31,7 +31,28 @@ interface ApiHost {
 
 const BASE = import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:3001'
 
-function hostToSitter(h: ApiHost): Sitter {
+interface MainPet { species: string; size: string }
+
+function calcMatchPercent(h: ApiHost, pet: MainPet | null): number {
+  if (!pet) {
+    let score = 70
+    if ((h.averageRating ?? 0) >= 4) score += 10
+    if (h.hasHostedBefore) score += 10
+    return Math.min(score, 95)
+  }
+  let score = 40
+  const speciesOk = !h.acceptedSpecies?.length ||
+    h.acceptedSpecies.some(s => pet.species.toLowerCase().startsWith(s.toLowerCase()) || s.toLowerCase().startsWith(pet.species.toLowerCase()))
+  if (speciesOk) score += 25
+  const sizeOk = !h.acceptedSizes?.length ||
+    h.acceptedSizes.some(s => pet.size.toLowerCase().startsWith(s.toLowerCase()))
+  if (sizeOk) score += 20
+  if (h.hasHostedBefore) score += 10
+  if ((h.averageRating ?? 0) >= 4) score += 5
+  return Math.min(score, 99)
+}
+
+function hostToSitter(h: ApiHost, pet: MainPet | null): Sitter {
   const photo = h.housePhotos?.[0] || h.spacePhotos?.[0]
   return {
     id: h.id,
@@ -43,7 +64,7 @@ function hostToSitter(h: ApiHost): Sitter {
     reviewCount: h.reviewCount ?? 0,
     pricePerDay: h.pricePerDay ?? 0,
     services: ['Hospedagem'],
-    matchPercent: 95,
+    matchPercent: calcMatchPercent(h, pet),
     verified: true,
     homeInspected: true,
     bio: h.bio ?? '',
@@ -63,7 +84,8 @@ export default function Buscar() {
   const [maxPrice, setMaxPrice] = useState(500)
   const [petType, setPetType] = useState('')
   const [size, setSize] = useState('')
-  const [sitters, setSitters] = useState<Sitter[]>([])
+  const [hosts, setHosts] = useState<ApiHost[]>([])
+  const [mainPet, setMainPet] = useState<MainPet | null>(null)
   const [loading, setLoading] = useState(true)
 
   const clearFilters = () => {
@@ -73,18 +95,26 @@ export default function Buscar() {
     setSize('')
   }
 
+  useEffect(() => {
+    api.get<Array<{ species: string; size: string }>>('/pets')
+      .then(pets => { if (pets.length > 0) setMainPet({ species: pets[0].species, size: pets[0].size }) })
+      .catch(() => {})
+  }, [])
+
   const fetchHosts = useCallback(() => {
     setLoading(true)
     const params = new URLSearchParams()
     if (petType) params.set('species', petType)
     if (size) params.set('size', size)
     api.get<ApiHost[]>(`/hosts?${params}`)
-      .then(data => setSitters(data.map(hostToSitter)))
+      .then(data => setHosts(data))
       .catch(() => { /* keep empty */ })
       .finally(() => setLoading(false))
   }, [petType, size])
 
   useEffect(() => { fetchHosts() }, [fetchHosts])
+
+  const sitters = useMemo(() => hosts.map(h => hostToSitter(h, mainPet)), [hosts, mainPet])
 
   const filtered = sitters.filter(s => {
     const matchQuery = !query || s.name.toLowerCase().includes(query.toLowerCase()) || s.location.toLowerCase().includes(query.toLowerCase())

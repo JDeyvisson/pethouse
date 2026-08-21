@@ -1,17 +1,29 @@
 import { prisma } from '../lib/prisma'
 import type { HostInput } from '../schemas/host.schema'
 
+const normalize = (v: string) => v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
 export const hostRepository = {
-  findAll: (filters: { city?: string; size?: string; species?: string; housingType?: string }) => {
+  findAll: async (filters: { city?: string; size?: string; species?: string; housingType?: string }) => {
     const where: Record<string, unknown> = {}
     if (filters.city) where.city = { contains: filters.city, mode: 'insensitive' }
     if (filters.housingType) where.housingType = filters.housingType
-    if (filters.size) where.acceptedSizes = { has: filters.size }
-    if (filters.species) where.acceptedSpecies = { has: filters.species }
-    return prisma.hostProfile.findMany({
+
+    const hosts = await prisma.hostProfile.findMany({
       where,
       include: { user: { select: { id: true, name: true, email: true, phone: true } } },
       orderBy: { averageRating: 'desc' },
+    })
+
+    // acceptedSizes/acceptedSpecies are free-form strings entered across different
+    // forms (e.g. "Pequeno" vs "pequeno"), so match case/accent-insensitively
+    // instead of relying on Prisma's exact `has` comparison.
+    return hosts.filter(h => {
+      const sizeOk = !filters.size ||
+        h.acceptedSizes.some(s => normalize(s).startsWith(normalize(filters.size!)))
+      const speciesOk = !filters.species ||
+        h.acceptedSpecies.some(s => normalize(s).startsWith(normalize(filters.species!)))
+      return sizeOk && speciesOk
     })
   },
 

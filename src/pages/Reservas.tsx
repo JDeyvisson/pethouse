@@ -33,15 +33,19 @@ function nightsBetween(start: string, end: string) {
   return Math.max(1, Math.round(ms / 86400000))
 }
 
-function DetailModal({ reserva, onClose, onNavigate, onCancel }: {
+function DetailModal({ reserva, role, onClose, onNavigate, onCancel, onStart, onConclude }: {
   reserva: Reserva
+  role: string
   onClose: () => void
   onNavigate: (path: string) => void
   onCancel: (id: string) => Promise<void>
+  onStart: (id: string) => Promise<void>
+  onConclude: (id: string) => Promise<void>
 }) {
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [cancelled, setCancelled] = useState(false)
   const [cancelling, setCancelling] = useState(false)
+  const [acting, setActing] = useState(false)
 
   const status = statusConfig[reserva.status]
   const StatusIcon = status.icon
@@ -59,7 +63,19 @@ function DetailModal({ reserva, onClose, onNavigate, onCancel }: {
     }
   }
 
-  const canCancel = reserva.status === 'proxima' || reserva.status === 'em_andamento'
+  const isHost = role === 'cuidador'
+  const canCancel = reserva.status === 'proxima' || (reserva.status === 'em_andamento' && !isHost)
+  const canStart = isHost && reserva.status === 'proxima'
+  const canConclude = isHost && reserva.status === 'em_andamento'
+
+  const handleStart = async () => {
+    setActing(true)
+    try { await onStart(reserva.id); onClose() } finally { setActing(false) }
+  }
+  const handleConclude = async () => {
+    setActing(true)
+    try { await onConclude(reserva.id); onClose() } finally { setActing(false) }
+  }
 
   return (
     <div
@@ -178,7 +194,7 @@ function DetailModal({ reserva, onClose, onNavigate, onCancel }: {
 
           {/* Actions */}
           <div className="flex gap-3 flex-wrap">
-            {reserva.status === 'concluida' && (
+            {reserva.status === 'concluida' && !isHost && (
               <button
                 onClick={() => { onClose(); onNavigate('/avaliacoes') }}
                 className="btn-gradient flex items-center justify-center gap-2 flex-1 py-2.5"
@@ -187,12 +203,25 @@ function DetailModal({ reserva, onClose, onNavigate, onCancel }: {
               </button>
             )}
 
-            {reserva.status === 'proxima' && (
+            {canStart && (
               <button
-                onClick={() => { onClose(); onNavigate('/buscar') }}
-                className="btn-gradient flex items-center justify-center gap-2 flex-1 py-2.5"
+                onClick={handleStart}
+                disabled={acting}
+                className="btn-primary flex items-center justify-center gap-2 flex-1 py-2.5 disabled:opacity-60"
               >
-                <CheckCircle2 size={15} /> Confirmar presença
+                {acting ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
+                Iniciar hospedagem
+              </button>
+            )}
+
+            {canConclude && (
+              <button
+                onClick={handleConclude}
+                disabled={acting}
+                className="btn-gradient flex items-center justify-center gap-2 flex-1 py-2.5 disabled:opacity-60"
+              >
+                {acting ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
+                Concluir hospedagem
               </button>
             )}
           </div>
@@ -215,7 +244,8 @@ function DetailModal({ reserva, onClose, onNavigate, onCancel }: {
 export default function Reservas() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { reservas, cancelReserva, loading } = useReservas()
+  const { reservas, cancelReserva, startReserva, concludeReserva, loading } = useReservas()
+  const isHost = user?.role === 'cuidador'
   const [activeTab, setActiveTab] = useState<ReservaStatus | 'todas'>('todas')
   const [detailId, setDetailId] = useState<string | null>(null)
   const filtered = activeTab === 'todas' ? reservas : reservas.filter(r => r.status === activeTab)
@@ -260,20 +290,21 @@ export default function Reservas() {
           {filtered.map(r => {
             const status = statusConfig[r.status]
             const StatusIcon = status.icon
+            const displayName = isHost ? (r.tutorName ?? '–') : r.sitterName
             return (
               <div key={r.id} className="card p-5">
                 <div className="flex gap-4">
-                  {r.sitterPhoto ? (
-                    <img src={r.sitterPhoto} alt={r.sitterName} className="w-14 h-14 rounded-2xl object-cover flex-shrink-0" />
+                  {r.sitterPhoto && !isHost ? (
+                    <img src={r.sitterPhoto} alt={displayName} className="w-14 h-14 rounded-2xl object-cover flex-shrink-0" />
                   ) : (
                     <div className="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center flex-shrink-0 text-primary font-bold text-xl">
-                      {r.sitterName.charAt(0) || '?'}
+                      {displayName.charAt(0) || '?'}
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="font-semibold text-text">{r.sitterName}</p>
+                        <p className="font-semibold text-text">{displayName}</p>
                         <p className="text-xs text-muted mt-0.5">{r.service} · Pet: {r.petName}</p>
                       </div>
                       <span className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0 ${status.color}`}>
@@ -328,9 +359,12 @@ export default function Reservas() {
       {detailReserva && (
         <DetailModal
           reserva={detailReserva}
+          role={user?.role ?? 'tutor'}
           onClose={() => setDetailId(null)}
           onNavigate={navigate}
           onCancel={cancelReserva}
+          onStart={startReserva}
+          onConclude={concludeReserva}
         />
       )}
     </div>

@@ -46,9 +46,29 @@ interface ApiHost {
   user: { id: string; name: string }
 }
 
-interface ApiPet { id: string; name: string; species: string }
+interface ApiPet { id: string; name: string; species: string; size: string }
+interface MainPet { species: string; size: string }
 
-function hostToSitter(h: ApiHost): Sitter {
+function calcMatchPercent(h: ApiHost, pet: MainPet | null): number {
+  if (!pet) {
+    let score = 70
+    if ((h.averageRating ?? 0) >= 4) score += 10
+    if (h.hasHostedBefore) score += 10
+    return Math.min(score, 95)
+  }
+  let score = 40
+  const speciesOk = !h.acceptedSpecies?.length ||
+    h.acceptedSpecies.some(s => pet.species.toLowerCase().startsWith(s.toLowerCase()) || s.toLowerCase().startsWith(pet.species.toLowerCase()))
+  if (speciesOk) score += 25
+  const sizeOk = !h.acceptedSizes?.length ||
+    h.acceptedSizes.some(s => pet.size.toLowerCase().startsWith(s.toLowerCase()))
+  if (sizeOk) score += 20
+  if (h.hasHostedBefore) score += 10
+  if ((h.averageRating ?? 0) >= 4) score += 5
+  return Math.min(score, 99)
+}
+
+function hostToSitter(h: ApiHost, pet: MainPet | null = null): Sitter {
   const photo = h.housePhotos?.[0] || h.spacePhotos?.[0]
   return {
     id: h.id,
@@ -62,7 +82,7 @@ function hostToSitter(h: ApiHost): Sitter {
     reviewCount: h.reviewCount ?? 0,
     pricePerDay: h.pricePerDay ?? 0,
     services: ['Hospedagem'],
-    matchPercent: 95,
+    matchPercent: calcMatchPercent(h, pet),
     verified: true,
     homeInspected: true,
     bio: h.bio ?? '',
@@ -519,12 +539,19 @@ export default function PerfilSitter() {
   const [likes, setLikes] = useState(0)
   const [showPayment, setShowPayment] = useState(false)
   const [reviews, setReviews] = useState<ApiReview[]>([])
+  const [mainPet, setMainPet] = useState<MainPet | null>(null)
+
+  useEffect(() => {
+    api.get<ApiPet[]>('/pets')
+      .then(pets => { if (pets.length > 0) setMainPet({ species: pets[0].species, size: pets[0].size }) })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!id) return
     api.get<ApiHost>(`/hosts/${id}`)
       .then(h => {
-        const s = hostToSitter(h)
+        const s = hostToSitter(h, mainPet)
         setSitter(s)
         setLikes(s.likesCount)
       })
@@ -533,7 +560,7 @@ export default function PerfilSitter() {
     api.get<ApiReview[]>(`/reviews/${id}`)
       .then(setReviews)
       .catch(() => { /* keep empty */ })
-  }, [id])
+  }, [id, mainPet])
 
   const handleLike = () => {
     setLiked(prev => !prev)
