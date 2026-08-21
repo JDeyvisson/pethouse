@@ -23,6 +23,14 @@
   --bg-subtle-lg:    rgba(0,   0,   0,   0.08);
 
   --gradient-alpha:  0.06;
+
+  /* Accent palette */
+  --color-coral:  255 126  95;   /* #FF7E5F warm coral — carinho/energia   */
+  --color-honey:  232 163  61;   /* #E8A33D honey gold — toques lúdicos    */
+  --color-info:    96 165 250;   /* #60A5FA soft blue — confiança/segurança */
+
+  --card-shadow:      0 1px 2px rgba(28, 28, 30, 0.04), 0 1px 1px rgba(28, 28, 30, 0.03);
+  --card-shadow-hover: 0 12px 24px -8px rgba(28, 28, 30, 0.14), 0 4px 8px -2px rgba(28, 28, 30, 0.06);
 }
 
 .dark {
@@ -43,6 +51,9 @@
   --bg-subtle-lg:    rgba(255, 255, 255, 0.10);
 
   --gradient-alpha:  0.12;
+
+  --card-shadow:      0 1px 2px rgba(0, 0, 0, 0.2), 0 1px 1px rgba(0, 0, 0, 0.14);
+  --card-shadow-hover: 0 14px 28px -8px rgba(0, 0, 0, 0.45), 0 4px 10px -2px rgba(0, 0, 0, 0.3);
 }
 
 /* ─── Base ────────────────────────────────────────────────────────────────── */
@@ -84,6 +95,16 @@ aside, header, main {
     background-color: rgb(var(--color-surface));
     border-radius: 16px;
     border: 1px solid var(--border-subtle);
+    box-shadow: var(--card-shadow);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.25s ease;
+  }
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--card-shadow-hover);
+    border-color: var(--border-medium);
+  }
+  button.card:active {
+    transform: translateY(-1px) scale(0.995);
   }
 
   .card-2 {
@@ -93,29 +114,48 @@ aside, header, main {
   }
 
   .input-field {
-    @apply w-full rounded-xl px-4 py-3 text-text placeholder-muted focus:outline-none transition-colors;
+    @apply w-full rounded-xl px-4 py-3 text-text placeholder-muted focus:outline-none transition-all;
     background-color: rgb(var(--color-surface-2));
     border: 1px solid var(--border-medium);
   }
-  .input-field:focus { border-color: #5E8B7E; }
+  .input-field:focus {
+    border-color: #5E8B7E;
+    box-shadow: 0 0 0 4px rgba(94, 139, 126, 0.15);
+  }
 
   .btn-primary {
-    @apply bg-primary hover:bg-primary-dark text-white rounded-xl px-6 py-3 font-semibold transition-colors;
+    @apply bg-primary hover:bg-primary-dark text-white rounded-xl px-6 py-3 font-semibold transition-all;
   }
 
   .btn-gradient {
-    background-color: #FF7E5F;
-    @apply text-white rounded-xl px-6 py-3 font-semibold hover:opacity-90 transition-opacity;
+    background-image: linear-gradient(135deg, rgb(var(--color-coral)) 0%, #ff9a6f 100%);
+    @apply text-white rounded-xl px-6 py-3 font-semibold transition-all;
   }
+  .btn-gradient:hover { filter: brightness(1.06); }
 
   .btn-outline {
-    @apply rounded-xl px-6 py-3 font-medium transition-colors;
+    @apply rounded-xl px-6 py-3 font-medium transition-all;
     border: 1px solid var(--border-stronger);
     color: rgb(var(--color-muted));
   }
   .btn-outline:hover {
     color: rgb(var(--color-text));
     border-color: var(--border-accent);
+  }
+
+  .btn-primary, .btn-gradient, .btn-outline {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+  .btn-primary:hover, .btn-gradient:hover, .btn-outline:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px -4px rgba(0, 0, 0, 0.18);
+  }
+  .btn-primary:active, .btn-gradient:active, .btn-outline:active {
+    transform: translateY(0) scale(0.97);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  }
+  .btn-primary:disabled, .btn-gradient:disabled, .btn-outline:disabled {
+    transform: none;
   }
 
   .pill {
@@ -145,4 +185,38 @@ aside, header, main {
   /* Hover borders */
   .hover\:border-accent:hover  { border-color: var(--border-accent);   }
   .hover\:border-stronger:hover { border-color: var(--border-stronger); }
+
+  /* Subtle repeating paw-print texture for hero/background accents */
+  .bg-paw-pattern {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='%235E8B7E' fill-opacity='0.05'%3E%3Cellipse cx='60' cy='72' rx='13' ry='10'/%3E%3Cellipse cx='42' cy='54' rx='6' ry='7.5'/%3E%3Cellipse cx='60' cy='46' rx='6.5' ry='8'/%3E%3Cellipse cx='78' cy='54' rx='6' ry='7.5'/%3E%3C/g%3E%3C/svg%3E");
+    background-repeat: repeat;
+  }
+
+  /* Staggered entrance for list/grid children.
+     No static opacity:0 here on purpose — the "backwards" fill mode of the
+     animation itself supplies the initial opacity. If the keyframe animation
+     ever fails to apply (stale CSS, reduced motion, etc.) children degrade
+     to fully visible instead of being stuck invisible-but-clickable. */
+  .stagger-children > * {
+    animation: fade-in-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .stagger-children > * { animation: none; }
+  }
+  .stagger-children > *:nth-child(1) { animation-delay: 0.02s; }
+  .stagger-children > *:nth-child(2) { animation-delay: 0.07s; }
+  .stagger-children > *:nth-child(3) { animation-delay: 0.12s; }
+  .stagger-children > *:nth-child(4) { animation-delay: 0.17s; }
+  .stagger-children > *:nth-child(5) { animation-delay: 0.22s; }
+  .stagger-children > *:nth-child(6) { animation-delay: 0.27s; }
+  .stagger-children > *:nth-child(n+7) { animation-delay: 0.32s; }
+
+  /* Shimmer skeleton base */
+  .skeleton {
+    background-color: rgb(var(--color-surface-2));
+    background-image: linear-gradient(90deg, transparent 0%, var(--bg-subtle-lg) 50%, transparent 100%);
+    background-size: 400px 100%;
+    background-repeat: no-repeat;
+    animation: shimmer 1.6s ease-in-out infinite;
+  }
 }

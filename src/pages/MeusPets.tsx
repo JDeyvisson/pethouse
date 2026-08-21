@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, Edit3, Stethoscope, Weight, Pill as PillIcon, Syringe, History, CheckCircle2, Clock, X, Camera } from 'lucide-react'
 import { api } from '../lib/api'
 import Pill from '../components/Pill'
+import PawPrintDecor from '../components/PawPrint'
 
 interface ApiPet {
   id: string
@@ -254,7 +255,10 @@ export default function MeusPets() {
               <p className="text-xs font-medium text-muted uppercase tracking-wider">Histórico de cuidados</p>
             </div>
             {pet.careHistory.length === 0 ? (
-              <p className="text-sm text-muted">Nenhum cuidado registrado ainda.</p>
+              <p className="text-sm text-muted flex items-center gap-2">
+                <PawPrintDecor size={14} className="text-primary/40 flex-shrink-0" />
+                Nenhum cuidado registrado ainda — o histórico aparece após a primeira hospedagem.
+              </p>
             ) : (
               <div className="space-y-3">
                 {pet.careHistory.map((h, i) => (
@@ -307,7 +311,10 @@ export default function MeusPets() {
               <p className="text-xs font-medium text-muted uppercase tracking-wider">Status vacinas</p>
             </div>
             {pet.vaccines.length === 0 ? (
-              <p className="text-sm text-muted">Nenhuma vacina registrada ainda.</p>
+              <p className="text-sm text-muted flex items-center gap-2">
+                <PawPrintDecor size={14} className="text-primary/40 flex-shrink-0" />
+                Nenhuma vacina registrada ainda.
+              </p>
             ) : (
               <div className="space-y-2">
                 {pet.vaccines.map(v => (

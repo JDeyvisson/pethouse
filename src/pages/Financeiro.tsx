@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { TrendingUp, TrendingDown, DollarSign, CreditCard, Wallet } from 'lucide-react'
 import Pill from '../components/Pill'
+import EmptyState from '../components/EmptyState'
 import { useAuth } from '../context/AuthContext'
 import { api } from '../lib/api'
 
@@ -76,7 +77,7 @@ function FinanceiroTutor() {
         {loading ? (
           <div className="px-5 py-8 text-center text-muted text-sm">Carregando…</div>
         ) : transactions.length === 0 ? (
-          <div className="px-5 py-8 text-center text-muted text-sm">Nenhuma transação registrada ainda.</div>
+          <EmptyState icon={Wallet} title="Nenhuma transação registrada" description="Suas transações aparecem aqui assim que houver movimentação." />
         ) : (
           <div>
             {transactions.map((t, i) => (
@@ -153,7 +154,7 @@ function FinanceiroCuidador() {
         {loading ? (
           <div className="px-5 py-8 text-center text-muted text-sm">Carregando…</div>
         ) : transactions.length === 0 ? (
-          <div className="px-5 py-8 text-center text-muted text-sm">Nenhum recebimento registrado ainda.</div>
+          <EmptyState icon={DollarSign} title="Nenhum recebimento registrado" description="Seus recebimentos aparecem aqui assim que houver uma hospedagem concluída." />
         ) : (
           <div>
             {transactions.map((t, i) => (

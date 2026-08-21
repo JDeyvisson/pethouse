@@ -8,6 +8,7 @@ import {
 import { type ReservaStatus, type Reserva } from '../data/reservas'
 import { useReservas } from '../context/ReservasContext'
 import Pill from '../components/Pill'
+import EmptyState from '../components/EmptyState'
 
 const statusConfig: Record<ReservaStatus, { label: string; icon: typeof CheckCircle2; color: string }> = {
   proxima:      { label: 'Próxima',       icon: CalendarClock, color: 'text-blue-400 bg-blue-400/10' },
@@ -265,9 +266,9 @@ export default function Reservas() {
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
               activeTab === tab.key
-                ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                ? 'bg-primary text-white shadow-sm shadow-primary/30'
                 : 'bg-subtle text-muted hover:text-text'
             }`}
           >
@@ -282,8 +283,8 @@ export default function Reservas() {
           <Loader2 size={24} className="animate-spin text-muted" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="card p-12 text-center">
-          <p className="text-muted text-sm">Nenhuma reserva nesta categoria.</p>
+        <div className="card">
+          <EmptyState icon={Calendar} title="Nenhuma reserva nesta categoria" description="Assim que houver uma hospedagem por aqui, ela aparece nesta lista." />
         </div>
       ) : (
         <div className="space-y-4">

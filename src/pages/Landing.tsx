@@ -22,22 +22,31 @@ export default function Landing() {
       </header>
 
       {/* Hero */}
-      <section className="flex-1 flex flex-col items-center justify-center text-center px-6 py-20">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium mb-6">
+      <section className="relative flex-1 flex flex-col items-center justify-center text-center px-6 py-20 overflow-hidden bg-paw-pattern">
+        <div
+          className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 w-[560px] h-[560px] rounded-full blur-3xl opacity-40"
+          style={{ background: 'radial-gradient(circle, rgba(94,139,126,0.25) 0%, transparent 70%)' }}
+        />
+        <div
+          className="pointer-events-none absolute bottom-0 right-1/2 translate-x-1/2 w-[420px] h-[420px] rounded-full blur-3xl opacity-30"
+          style={{ background: 'radial-gradient(circle, rgba(255,126,95,0.2) 0%, transparent 70%)' }}
+        />
+
+        <div className="relative inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium mb-6 animate-fade-in-up">
           <PawPrint size={12} />
           Hospedagem de pets com quem você pode confiar
         </div>
 
-        <h1 className="font-display text-5xl font-bold text-text leading-tight max-w-2xl mb-5">
+        <h1 className="relative font-display text-5xl font-bold text-text leading-tight max-w-2xl mb-5 animate-fade-in-up" style={{ animationDelay: '0.06s' }}>
           Seu pet merece o<br />
           <span className="text-primary">melhor cuidado</span>
         </h1>
 
-        <p className="text-muted text-lg max-w-md mb-10">
+        <p className="relative text-muted text-lg max-w-md mb-10 animate-fade-in-up" style={{ animationDelay: '0.12s' }}>
           Conectamos tutores a anfitriões verificados que tratam seu pet como parte da família.
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center gap-4">
+        <div className="relative flex flex-col sm:flex-row items-center gap-4 animate-fade-in-up" style={{ animationDelay: '0.18s' }}>
           <Link
             to="/cadastrar"
             className="flex items-center gap-2 btn-primary text-base py-3 px-7"
@@ -55,7 +64,7 @@ export default function Landing() {
 
       {/* Features */}
       <section className="max-w-5xl mx-auto px-6 pb-20 w-full">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 stagger-children">
           {[
             {
               icon: <ShieldCheck size={22} className="text-primary" />,
@@ -114,8 +123,7 @@ export default function Landing() {
             </div>
             <Link
               to="/cadastro-anfitriao"
-              className="text-center text-sm py-2.5 rounded-xl font-semibold transition-colors text-white"
-              style={{ backgroundColor: '#FF7E5F' }}
+              className="btn-gradient text-center text-sm py-2.5"
             >
               Criar conta de anfitrião
             </Link>

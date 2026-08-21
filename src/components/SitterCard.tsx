@@ -12,25 +12,22 @@ export default function SitterCard({ sitter }: SitterCardProps) {
   return (
     <button
       onClick={() => navigate(`/perfil-sitter/${sitter.id}`)}
-      className="card p-5 w-full text-left hover:border-strong hover:bg-surface-2 transition-all group"
+      className="card p-4 w-full text-left transition-all group"
     >
       <div className="flex gap-4">
-        <div className="relative flex-shrink-0">
+        <div className="relative flex-shrink-0 overflow-hidden rounded-2xl w-24 h-24 sm:w-28 sm:h-28">
           <img
             src={sitter.photo}
             alt={sitter.name}
-            className="w-16 h-16 rounded-2xl object-cover"
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
           {/* Match badge */}
-          <div
-            className="absolute -top-2 -right-2 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-            style={{ backgroundColor: '#FF7E5F' }}
-          >
-            {sitter.matchPercent}%
+          <div className="absolute top-1.5 left-1.5 bg-coral text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+            {sitter.matchPercent}% match
           </div>
         </div>
 
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex flex-col justify-center">
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="font-semibold text-text group-hover:text-primary transition-colors">{sitter.name}</p>
@@ -53,7 +50,7 @@ export default function SitterCard({ sitter }: SitterCardProps) {
               </span>
             )}
             {sitter.homeInspected && (
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 text-[10px] font-medium">
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-info/15 text-info text-[10px] font-medium">
                 <Home size={10} /> Casa vistoriada
               </span>
             )}

@@ -117,11 +117,11 @@ function pwScore(s: string): number {
 const Req = () => <span className="text-red-500 ml-0.5">*</span>
 
 const Lbl = ({ children }: { children: React.ReactNode }) => (
-  <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{children}</p>
+  <p className="text-xs font-medium text-muted uppercase tracking-wider">{children}</p>
 )
 
 const Hint = ({ text }: { text: string }) => (
-  <p className="text-xs text-gray-400 italic mt-1.5">{text}</p>
+  <p className="text-xs text-muted italic mt-1.5">{text}</p>
 )
 
 const Err = ({ msg }: { msg?: string }) =>
@@ -129,13 +129,13 @@ const Err = ({ msg }: { msg?: string }) =>
 
 function SectionHeader({ icon, num, title }: { icon: React.ReactNode; num: number; title: string }) {
   return (
-    <div className="flex items-center gap-3 mb-5 pb-4 border-b border-gray-100">
-      <div className="p-2.5 rounded-2xl" style={{ backgroundColor: 'rgba(94,139,126,0.12)' }}>
+    <div className="flex items-center gap-3 mb-5 pb-4 border-b border-subtle">
+      <div className="p-2.5 rounded-2xl bg-primary/10">
         <span className="text-primary">{icon}</span>
       </div>
       <div>
-        <p className="text-xs text-gray-400 uppercase tracking-wider">Seção {num}</p>
-        <h2 className="font-semibold text-gray-900">{title}</h2>
+        <p className="text-xs text-muted uppercase tracking-wider">Seção {num}</p>
+        <h2 className="font-semibold text-text">{title}</h2>
       </div>
     </div>
   )
@@ -170,11 +170,11 @@ function YesNoField({ name, value, onChange, error }: {
             <input type="radio" name={name} value={v} checked={value === v}
               onChange={() => onChange(v)} className="sr-only" />
             <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-              value === v ? 'border-primary bg-primary' : 'border-gray-300 hover:border-primary/50'
+              value === v ? 'border-primary bg-primary' : 'border-medium hover:border-primary/50'
             }`}>
               {value === v && <span className="w-2 h-2 rounded-full bg-white" />}
             </span>
-            <span className="text-sm text-gray-700">{v === 'sim' ? 'Sim' : 'Não'}</span>
+            <span className="text-sm text-text">{v === 'sim' ? 'Sim' : 'Não'}</span>
           </label>
         ))}
       </div>
@@ -200,7 +200,7 @@ function RadioPills<T extends string>({ name, options, value, onChange, error }:
             <span className={`block px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all ${
               value === opt.value
                 ? 'border-primary bg-primary/10 text-primary'
-                : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                : 'border-medium text-muted hover:border-stronger'
             }`}>
               {opt.label}
             </span>
@@ -229,7 +229,7 @@ function CheckboxPills({ options, values, onChange, error }: {
               <span className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all ${
                 sel
                   ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                  : 'border-medium text-muted hover:border-stronger'
               }`}>
                 {sel && <Check size={12} strokeWidth={3} />}
                 {opt}
@@ -254,7 +254,7 @@ function PhotoZone({ fotos, onAdd, onRemove, error, maxCount = 5 }: {
     <div>
       <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 mt-2">
         {fotos.map((f, i) => (
-          <div key={i} className="relative aspect-square rounded-xl overflow-hidden bg-gray-100 group">
+          <div key={i} className="relative aspect-square rounded-xl overflow-hidden bg-subtle group">
             <img src={f.preview} alt="" className="w-full h-full object-cover" />
             <button type="button" onClick={() => onRemove(i)}
               className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -265,14 +265,14 @@ function PhotoZone({ fotos, onAdd, onRemove, error, maxCount = 5 }: {
           </div>
         ))}
         {fotos.length < maxCount && (
-          <label className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary hover:bg-primary/5 transition-all text-gray-400 hover:text-primary">
+          <label className="aspect-square rounded-xl border-2 border-dashed border-medium flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary hover:bg-primary/5 transition-all text-muted hover:text-primary">
             <Camera size={20} />
             <span className="text-xs text-center leading-tight px-1">Adicionar</span>
             <input type="file" accept="image/jpeg,image/png" multiple className="sr-only" onChange={onAdd} />
           </label>
         )}
       </div>
-      <p className="text-xs text-gray-400 mt-1.5">{fotos.length}/{maxCount} fotos · JPG ou PNG · máx. 5 MB cada</p>
+      <p className="text-xs text-muted mt-1.5">{fotos.length}/{maxCount} fotos · JPG ou PNG · máx. 5 MB cada</p>
       {error && <p role="alert" className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
   )
@@ -326,24 +326,24 @@ function HostCalendar({ selected, onChange }: { selected: string[]; onChange: (d
     <div className="select-none">
       <div className="flex items-center justify-between mb-3">
         <button type="button" onClick={prevMonth}
-          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
+          className="p-1.5 rounded-lg hover:bg-subtle text-muted hover:text-text transition-colors">
           <ChevronLeft size={15} />
         </button>
         <div className="text-center">
-          <p className="text-sm font-semibold text-gray-800">{MONTHS_PT[viewMonth]} {viewYear}</p>
+          <p className="text-sm font-semibold text-text">{MONTHS_PT[viewMonth]} {viewYear}</p>
           {selectedThisMonth > 0 && (
             <p className="text-xs text-primary mt-0.5">{selectedThisMonth} dia{selectedThisMonth > 1 ? 's' : ''} selecionado{selectedThisMonth > 1 ? 's' : ''}</p>
           )}
         </div>
         <button type="button" onClick={nextMonth}
-          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
+          className="p-1.5 rounded-lg hover:bg-subtle text-muted hover:text-text transition-colors">
           <ChevronRight size={15} />
         </button>
       </div>
 
       <div className="grid grid-cols-7 mb-1">
         {DAYS_PT_MIN.map((d, i) => (
-          <div key={i} className="text-center text-[10px] font-medium text-gray-400 py-1">{d}</div>
+          <div key={i} className="text-center text-[10px] font-medium text-muted py-1">{d}</div>
         ))}
       </div>
 
@@ -355,18 +355,17 @@ function HostCalendar({ selected, onChange }: { selected: string[]; onChange: (d
           return (
             <button key={iso} type="button" disabled={isPast} onClick={() => toggle(iso)}
               className={`h-9 w-full rounded-lg text-sm font-medium transition-all
-                ${isPast ? 'text-gray-300 cursor-not-allowed' : ''}
-                ${isSel && !isPast ? 'text-white shadow-sm' : ''}
-                ${!isSel && !isPast ? 'text-gray-700 hover:bg-primary/10 hover:text-primary' : ''}
-              `}
-              style={isSel && !isPast ? { backgroundColor: '#5E8B7E' } : {}}>
+                ${isPast ? 'text-muted/50 cursor-not-allowed' : ''}
+                ${isSel && !isPast ? 'bg-primary text-white shadow-sm' : ''}
+                ${!isSel && !isPast ? 'text-text hover:bg-primary/10 hover:text-primary' : ''}
+              `}>
               {new Date(iso + 'T12:00:00').getDate()}
             </button>
           )
         })}
       </div>
 
-      <div className="flex gap-3 mt-3 pt-3 border-t border-gray-100 text-xs">
+      <div className="flex gap-3 mt-3 pt-3 border-t border-subtle text-xs">
         <button type="button" onClick={() => {
           const toAdd: string[] = []
           for (let d = 1; d <= daysInMonth; d++) {
@@ -377,16 +376,16 @@ function HostCalendar({ selected, onChange }: { selected: string[]; onChange: (d
         }} className="text-primary hover:underline">
           Selecionar mês todo
         </button>
-        <span className="text-gray-300">·</span>
+        <span className="text-muted/50">·</span>
         <button type="button" onClick={() => {
           const prefix = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`
           onChange(selected.filter(d => !d.startsWith(prefix)))
-        }} className="text-gray-400 hover:text-gray-600 hover:underline">
+        }} className="text-muted hover:text-text hover:underline">
           Limpar mês
         </button>
         {selected.length > 0 && (
           <>
-            <span className="text-gray-300">·</span>
+            <span className="text-muted/50">·</span>
             <button type="button" onClick={() => onChange([])}
               className="text-red-400 hover:underline">
               Limpar tudo ({selected.length})
@@ -406,11 +405,11 @@ function TermCheckbox({ checked, onChange, error, children }: {
       <label className="flex items-start gap-3 cursor-pointer">
         <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} className="sr-only" />
         <div className={`mt-0.5 w-5 h-5 rounded-md border-2 flex-shrink-0 flex items-center justify-center transition-all ${
-          checked ? 'bg-primary border-primary' : 'border-gray-300 hover:border-gray-400'
+          checked ? 'bg-primary border-primary' : 'border-medium hover:border-stronger'
         }`}>
           {checked && <Check size={12} className="text-white" strokeWidth={3} />}
         </div>
-        <span className="text-sm text-gray-700 leading-relaxed">{children}</span>
+        <span className="text-sm text-text leading-relaxed">{children}</span>
       </label>
       {error && <p role="alert" className="text-xs text-red-500 mt-1.5 ml-8">{error}</p>}
     </div>
@@ -457,14 +456,14 @@ function PendingFieldsSummary({ form, isLoggedIn }: { form: FormData; isLoggedIn
   if (missing.length === 0) return null
 
   return (
-    <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-4">
-      <p className="text-xs font-semibold text-yellow-700 mb-2">
+    <div className="rounded-2xl border border-honey/30 bg-honey/10 p-4">
+      <p className="text-xs font-semibold text-honey mb-2">
         {missing.length} {missing.length === 1 ? 'campo obrigatório pendente' : 'campos obrigatórios pendentes'}:
       </p>
       <ul className="space-y-1">
         {missing.map(label => (
-          <li key={label} className="flex items-center gap-2 text-xs text-yellow-700">
-            <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 flex-shrink-0" />
+          <li key={label} className="flex items-center gap-2 text-xs text-honey">
+            <span className="w-1.5 h-1.5 rounded-full bg-honey flex-shrink-0" />
             {label}
           </li>
         ))}
@@ -663,21 +662,25 @@ export default function CadastroAnfitriao() {
   }
 
   const ic = (err?: string) =>
-    `mt-2 w-full bg-gray-50 border ${err ? 'border-red-300' : 'border-gray-200'} rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary transition-colors`
+    `mt-2 w-full bg-surface-2 border ${err ? 'border-red-500' : 'border-medium'} rounded-xl px-4 py-3 text-sm text-text placeholder-muted/60 focus:outline-none focus:border-primary transition-all ${err ? '' : 'focus:shadow-[0_0_0_4px_rgba(94,139,126,0.15)]'}`
 
   return (
-    <div className="min-h-screen bg-gray-50 py-10 px-4">
-      <div className="max-w-2xl mx-auto">
+    <div className="relative min-h-screen bg-bg py-10 px-4 overflow-hidden bg-paw-pattern">
+      <div
+        className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[560px] h-[560px] rounded-full blur-3xl opacity-30"
+        style={{ background: 'radial-gradient(circle, rgba(94,139,126,0.25) 0%, transparent 70%)' }}
+      />
+      <div className="relative max-w-2xl mx-auto animate-fade-in-up">
 
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-6">
-            <PetHouseLogo dark />
+            <PetHouseLogo />
           </div>
-          <h1 className="text-2xl font-display font-bold text-gray-900">
+          <h1 className="text-2xl font-display font-bold text-text">
             Formulário de Cadastro — Anfitrião
           </h1>
-          <p className="text-gray-500 text-sm mt-2">
+          <p className="text-muted text-sm mt-2">
             Preencha todas as informações para ativar seu perfil
           </p>
         </div>
@@ -686,15 +689,15 @@ export default function CadastroAnfitriao() {
 
           {/* ── Seção 1 — Dados Pessoais ──────────────────────────────────── */}
           {user ? (
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+            <div className="card p-6">
               <SectionHeader icon={<User size={18} />} num={1} title="Dados Pessoais" />
               <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-primary/5 border border-primary/20">
                 <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary font-bold text-base flex-shrink-0">
                   {user.name.charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">{user.name}</p>
-                  <p className="text-xs text-gray-500">{user.email}</p>
+                  <p className="text-sm font-semibold text-text">{user.name}</p>
+                  <p className="text-xs text-muted">{user.email}</p>
                 </div>
                 <span className="ml-auto text-xs text-primary font-medium bg-primary/10 px-2.5 py-1 rounded-full">
                   Conta ativa
@@ -702,7 +705,7 @@ export default function CadastroAnfitriao() {
               </div>
             </div>
           ) : (
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+            <div className="card p-6">
               <SectionHeader icon={<User size={18} />} num={1} title="Dados Pessoais" />
 
               <div className="space-y-4">
@@ -736,7 +739,7 @@ export default function CadastroAnfitriao() {
                         onChange={handleChange} placeholder="••••••••"
                         className={`${ic(errors.senha)} pr-10`} />
                       <button type="button" onClick={() => setShowSenha(v => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-text">
                         {showSenha ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
@@ -750,7 +753,7 @@ export default function CadastroAnfitriao() {
                         value={form.confirmarSenha} onChange={handleChange} placeholder="••••••••"
                         className={`${ic(errors.confirmarSenha)} pr-10`} />
                       <button type="button" onClick={() => setShowConfirmar(v => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-text">
                         {showConfirmar ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
@@ -762,7 +765,7 @@ export default function CadastroAnfitriao() {
           )}
 
           {/* ── Seção 2 — Endereço ────────────────────────────────────────── */}
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+          <div className="card p-6">
             <SectionHeader icon={<MapPin size={18} />} num={2} title="Endereço do Espaço" />
 
             <div className="space-y-4">
@@ -774,7 +777,7 @@ export default function CadastroAnfitriao() {
                       placeholder="00000-000" maxLength={9} className={ic(errors.cep)} />
                     {cepLoading && (
                       <Loader2 size={15}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted animate-spin" />
                     )}
                   </div>
                   <Hint text="Preenchimento automático do endereço" />
@@ -812,7 +815,7 @@ export default function CadastroAnfitriao() {
           </div>
 
           {/* ── Seção 3 — Sobre o Espaço ──────────────────────────────────── */}
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+          <div className="card p-6">
             <SectionHeader icon={<Home size={18} />} num={3} title="Sobre o Espaço" />
 
             <div className="space-y-5">
@@ -847,7 +850,7 @@ export default function CadastroAnfitriao() {
           </div>
 
           {/* ── Seção 4 — Sobre a Hospedagem ──────────────────────────────── */}
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+          <div className="card p-6">
             <SectionHeader icon={<PawPrint size={18} />} num={4} title="Sobre a Hospedagem" />
 
             <div className="space-y-5">
@@ -922,7 +925,7 @@ export default function CadastroAnfitriao() {
           </div>
 
           {/* ── Seção 5 — Experiência ─────────────────────────────────────── */}
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+          <div className="card p-6">
             <SectionHeader icon={<Star size={18} />} num={5} title="Experiência com Pets" />
 
             <div className="space-y-5">
@@ -957,7 +960,7 @@ export default function CadastroAnfitriao() {
           </div>
 
           {/* ── Seção 6 — Preço e Disponibilidade ────────────────────────── */}
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+          <div className="card p-6">
             <SectionHeader icon={<Calendar size={18} />} num={6} title="Preço e Disponibilidade" />
 
             <div className="space-y-6">
@@ -965,7 +968,7 @@ export default function CadastroAnfitriao() {
               <div>
                 <Lbl>Valor por diária (R$)</Lbl>
                 <div className="relative mt-2 max-w-xs">
-                  <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
                   <input
                     type="number"
                     min="1"
@@ -973,7 +976,7 @@ export default function CadastroAnfitriao() {
                     value={pricePerDay}
                     onChange={e => setPricePerDay(e.target.value)}
                     placeholder="150"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-9 pr-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary transition-colors"
+                    className="w-full bg-surface-2 border border-medium rounded-xl pl-9 pr-4 py-3 text-sm text-text placeholder-muted/60 focus:outline-none focus:border-primary transition-colors"
                   />
                 </div>
                 <Hint text="Este valor aparecerá para os tutores ao buscar anfitriões" />
@@ -982,10 +985,10 @@ export default function CadastroAnfitriao() {
               {/* Datas disponíveis */}
               <div>
                 <Lbl>Datas disponíveis para receber pets</Lbl>
-                <p className="text-xs text-gray-400 mt-1 mb-3">
+                <p className="text-xs text-muted mt-1 mb-3">
                   Selecione os dias em que você pode receber hospedagem. Os tutores só poderão reservar as datas que você marcar.
                 </p>
-                <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                <div className="bg-subtle rounded-2xl p-4 border border-subtle">
                   <HostCalendar selected={availableDates} onChange={setAvailableDates} />
                 </div>
                 {availableDates.length > 0 && (
@@ -999,7 +1002,7 @@ export default function CadastroAnfitriao() {
           </div>
 
           {/* ── Seção 7 — Verificação de Identidade e Espaço ─────────────── */}
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+          <div className="card p-6">
             <SectionHeader icon={<ShieldCheck size={18} />} num={7} title="Verificação de Identidade e Espaço" />
 
             <div className="space-y-5">
@@ -1016,7 +1019,7 @@ export default function CadastroAnfitriao() {
 
               <div>
                 <Lbl>Documento de identidade (RG ou CNH)</Lbl>
-                <label className="mt-2 flex flex-col items-center gap-3 p-5 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-primary hover:bg-primary/5 transition-all group">
+                <label className="mt-2 flex flex-col items-center gap-3 p-5 border-2 border-dashed border-medium rounded-xl cursor-pointer hover:border-primary hover:bg-primary/5 transition-all group">
                   {form.docPreview ? (
                     <div className="relative">
                       <img src={form.docPreview} alt="Documento" className="h-28 object-contain rounded-xl" />
@@ -1026,12 +1029,12 @@ export default function CadastroAnfitriao() {
                     </div>
                   ) : (
                     <>
-                      <div className="p-3 rounded-2xl bg-gray-100 group-hover:bg-primary/10 transition-colors">
-                        <Camera size={22} className="text-gray-400 group-hover:text-primary transition-colors" />
+                      <div className="p-3 rounded-2xl bg-subtle group-hover:bg-primary/10 transition-colors">
+                        <Camera size={22} className="text-muted group-hover:text-primary transition-colors" />
                       </div>
                       <div className="text-center">
-                        <p className="text-sm text-gray-500 font-medium">Enviar foto do documento</p>
-                        <p className="text-xs text-gray-400 mt-0.5">JPG ou PNG · Frente e verso</p>
+                        <p className="text-sm text-muted font-medium">Enviar foto do documento</p>
+                        <p className="text-xs text-muted mt-0.5">JPG ou PNG · Frente e verso</p>
                       </div>
                     </>
                   )}
@@ -1050,7 +1053,7 @@ export default function CadastroAnfitriao() {
           </div>
 
           {/* ── Seção 8 — Termos e Condições ─────────────────────────────── */}
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+          <div className="card p-6">
             <SectionHeader icon={<FileText size={18} />} num={8} title="Termos e Condições" />
 
             <div className="space-y-4">
@@ -1081,12 +1084,11 @@ export default function CadastroAnfitriao() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full py-4 rounded-2xl font-semibold text-white text-base transition-all flex items-center justify-center gap-2 disabled:opacity-60"
-              style={{ backgroundColor: '#5E8B7E' }}
+              className="btn-primary w-full py-4 text-base flex items-center justify-center gap-2 disabled:opacity-60"
             >
               {submitting ? <><Loader2 size={16} className="animate-spin" /> Enviando…</> : 'Enviar cadastro'}
             </button>
-            <p className="text-center text-xs text-gray-400 mt-1">
+            <p className="text-center text-xs text-muted mt-1">
               Já tem uma conta?{' '}
               <Link to="/login" className="text-primary font-medium hover:underline">Fazer login</Link>
             </p>

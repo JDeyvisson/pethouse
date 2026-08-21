@@ -1,7 +1,7 @@
 ﻿export default function PetHouseLogo({ dark = false }: { dark?: boolean }) {
   return (
-    <div className="flex items-center gap-2">
-      <div className="relative">
+    <div className="flex items-center gap-2 group cursor-default">
+      <div className="relative transition-transform duration-300 group-hover:rotate-[-6deg] group-hover:scale-105">
         <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
           <path
             d="M16 4 L28 14 L28 28 L4 28 L4 14 Z"

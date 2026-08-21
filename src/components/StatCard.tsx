@@ -12,13 +12,13 @@ export default function StatCard({ icon: Icon, label, value, sublabel, accent }:
   return (
     <div className={`card p-5 flex flex-col gap-3 ${accent ? 'border-primary/30' : ''}`}>
       <div className="flex items-center gap-2">
-        <div className={`p-2 rounded-lg ${accent ? 'bg-primary/20' : 'bg-subtle'}`}>
+        <div className={`p-2 rounded-xl transition-colors ${accent ? 'bg-primary/15' : 'bg-subtle'}`}>
           <Icon size={16} className={accent ? 'text-primary' : 'text-muted'} />
         </div>
         <span className="text-xs text-muted font-medium uppercase tracking-wider">{label}</span>
       </div>
       <div>
-        <p className="text-3xl font-bold text-text">{value}</p>
+        <p className="text-3xl font-bold text-text tabular-nums">{value}</p>
         <p className="text-xs text-muted mt-1">{sublabel}</p>
       </div>
     </div>

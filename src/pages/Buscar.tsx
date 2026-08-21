@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Search, SlidersHorizontal, X } from 'lucide-react'
+import { Search, SlidersHorizontal, X, PawPrint } from 'lucide-react'
 import { api } from '../lib/api'
 import type { Sitter } from '../data/sitters'
 import SitterCard from '../components/SitterCard'
 import Pill from '../components/Pill'
+import SkeletonCard from '../components/SkeletonCard'
+import EmptyState from '../components/EmptyState'
 
 const petTypes = ['cachorro', 'gato', 'passaro', 'coelho', 'outro']
 const petTypeLabels: Record<string, string> = {
@@ -219,14 +221,22 @@ export default function Buscar() {
           </div>
 
           {loading ? (
-            <div className="card p-12 text-center text-muted text-sm">Carregando anfitriões…</div>
+            <div className="space-y-3">
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </div>
           ) : filtered.length === 0 ? (
-            <div className="card p-12 text-center">
-              <p className="text-muted">Nenhum anfitrião encontrado com os filtros selecionados.</p>
-              <button onClick={clearFilters} className="mt-4 text-primary text-sm hover:underline">Limpar filtros</button>
+            <div className="card">
+              <EmptyState
+                icon={PawPrint}
+                title="Nenhum anfitrião encontrado"
+                description="Tente ajustar os filtros selecionados para encontrar mais opções de hospedagem perto de você."
+                action={{ label: 'Limpar filtros', onClick: clearFilters }}
+              />
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 stagger-children">
               {filtered.map(sitter => (
                 <SitterCard key={sitter.id} sitter={sitter} />
               ))}

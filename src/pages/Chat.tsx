@@ -4,6 +4,7 @@ import { useReservas } from '../context/ReservasContext'
 import { useAuth } from '../context/AuthContext'
 import { api } from '../lib/api'
 import Pill from '../components/Pill'
+import EmptyState from '../components/EmptyState'
 
 interface ApiMessage {
   id: string
@@ -143,17 +144,17 @@ export default function Chat() {
       {loading ? (
         <div className="card p-12 text-center text-muted text-sm">Carregando…</div>
       ) : contacts.length === 0 ? (
-        <div className="card p-12 text-center space-y-3">
-          <MessageCircle size={32} className="text-muted mx-auto opacity-40" />
-          <p className="text-muted text-sm">Nenhuma conversa ainda.</p>
-          <p className="text-xs text-muted">
-            As conversas aparecem quando você tem reservas com {isCuidador ? 'tutores' : 'anfitriões'}.
-          </p>
+        <div className="card">
+          <EmptyState
+            icon={MessageCircle}
+            title="Nenhuma conversa ainda"
+            description={`As conversas aparecem quando você tem reservas com ${isCuidador ? 'tutores' : 'anfitriões'}.`}
+          />
         </div>
       ) : (
-        <div className="grid grid-cols-[280px_1fr] gap-4 h-[calc(100vh-280px)]">
+        <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-4 md:h-[calc(100vh-280px)]">
           {/* Contacts list */}
-          <div className="card overflow-hidden flex flex-col">
+          <div className="card overflow-hidden flex flex-col h-[360px] md:h-auto">
             <div className="p-4 border-b border-subtle">
               <div className="relative">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
@@ -204,7 +205,7 @@ export default function Chat() {
 
           {/* Messages panel */}
           {active ? (
-            <div className="card flex flex-col overflow-hidden">
+            <div className="card flex flex-col overflow-hidden h-[480px] md:h-auto">
               <div className="flex items-center gap-3 p-4 border-b border-subtle">
                 <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0">
                   {active.initials}
@@ -230,9 +231,8 @@ export default function Chat() {
                     <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                       <div
                         className={`max-w-xs px-4 py-2.5 rounded-2xl text-sm ${
-                          isMe ? 'text-white rounded-tr-sm' : 'bg-surface-2 text-text rounded-tl-sm'
+                          isMe ? 'bg-coral text-white rounded-tr-sm' : 'bg-surface-2 text-text rounded-tl-sm'
                         }`}
-                        style={isMe ? { backgroundColor: '#FF7E5F' } : {}}
                       >
                         <p className="leading-relaxed">{msg.text}</p>
                         <p className={`text-[10px] mt-1 ${isMe ? 'text-white/70 text-right' : 'text-muted'}`}>
@@ -272,8 +272,7 @@ export default function Chat() {
                 <button
                   type="submit"
                   disabled={active.locked || sending}
-                  className="p-2.5 rounded-xl text-white flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ backgroundColor: '#FF7E5F' }}
+                  className="p-2.5 rounded-xl bg-coral hover:brightness-105 active:scale-95 text-white flex-shrink-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Send size={16} />
                 </button>

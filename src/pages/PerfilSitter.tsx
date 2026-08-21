@@ -8,6 +8,7 @@ import {
 import { api, ApiError } from '../lib/api'
 import { useReservas } from '../context/ReservasContext'
 import Pill from '../components/Pill'
+import PawSpinner from '../components/PawSpinner'
 import type { Sitter } from '../data/sitters'
 
 const BASE = import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:3001'
@@ -230,8 +231,20 @@ function PaymentModal({ sitter, onClose, onSuccess }: {
       <div className="card w-full max-w-md flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
         {step === 'success' ? (
           <div className="p-10 flex flex-col items-center text-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-primary/15 flex items-center justify-center">
-              <CheckCircle2 size={32} className="text-primary" />
+            <div className="relative w-16 h-16 rounded-full bg-primary/15 flex items-center justify-center animate-scale-in">
+              <CheckCircle2 size={32} className="text-primary animate-paw-pop" style={{ animationDelay: '0.15s' }} />
+              {[0, 1, 2].map(i => (
+                <PawPrint
+                  key={i}
+                  size={14}
+                  className="absolute text-coral animate-float"
+                  style={{
+                    left: `${20 + i * 25}%`,
+                    top: '10%',
+                    animationDelay: `${0.3 + i * 0.12}s`,
+                  }}
+                />
+              ))}
             </div>
             <div>
               <p className="text-xl font-bold text-text font-display">Reserva confirmada!</p>
@@ -489,7 +502,7 @@ function PaymentModal({ sitter, onClose, onSuccess }: {
                       <button type="submit" disabled={step === 'processing'}
                         className="btn-gradient w-full flex items-center justify-center gap-2 py-3 disabled:opacity-60">
                         {step === 'processing'
-                          ? <><Loader2 size={16} className="animate-spin" /> Processando...</>
+                          ? <PawSpinner size={13} label="Processando..." pawColorClassName="text-white" labelColorClassName="text-white/90" />
                           : <>Pagar R$ {total}</>}
                       </button>
                     </form>
@@ -512,7 +525,7 @@ function PaymentModal({ sitter, onClose, onSuccess }: {
                         onClick={handlePay}
                         className="btn-gradient w-full flex items-center justify-center gap-2 py-3 disabled:opacity-60">
                         {step === 'processing'
-                          ? <><Loader2 size={16} className="animate-spin" /> Processando...</>
+                          ? <PawSpinner size={13} label="Processando..." pawColorClassName="text-white" labelColorClassName="text-white/90" />
                           : <>Confirmar via PIX — R$ {total}</>}
                       </button>
                     </div>
@@ -575,18 +588,21 @@ export default function PerfilSitter() {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6">
         <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-muted hover:text-text transition-colors text-sm">
           <ArrowLeft size={16} /> Voltar para busca
         </button>
-        <div className="card p-12 text-center text-muted text-sm">Carregando perfil…</div>
+        <div className="card skeleton h-56 sm:h-72" />
+        <div className="card p-12 flex items-center justify-center">
+          <PawSpinner size={16} label="Carregando perfil…" />
+        </div>
       </div>
     )
   }
 
   if (!sitter) {
     return (
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6">
         <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-muted hover:text-text transition-colors text-sm">
           <ArrowLeft size={16} /> Voltar para busca
         </button>
@@ -595,8 +611,10 @@ export default function PerfilSitter() {
     )
   }
 
+  const coverPhoto = sitter.gallery[0] || sitter.photo
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-muted hover:text-text transition-colors text-sm">
         <ArrowLeft size={16} /> Voltar para busca
       </button>
@@ -605,18 +623,21 @@ export default function PerfilSitter() {
 
       {/* Hero card */}
       <div className="card overflow-hidden">
-        <div className="h-40 relative" style={{ backgroundColor: '#FF7E5F22' }}>
+        <div className="h-56 sm:h-72 relative overflow-hidden">
+          <img src={coverPhoto} alt={`Espaço de ${sitter.name}`} className="absolute inset-0 w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/10" />
+
           <div className="absolute inset-0 flex items-end p-6">
             <div className="flex items-end gap-4">
               <div className="relative">
                 <img src={sitter.photo} alt={sitter.name} className="w-20 h-20 rounded-2xl object-cover border-4 border-bg shadow-lg" />
-                <div className="absolute -top-3 -right-3 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow" style={{ backgroundColor: '#FF7E5F' }}>
+                <div className="absolute -top-3 -right-3 bg-coral text-white text-xs font-bold px-2 py-0.5 rounded-full shadow">
                   {sitter.matchPercent}%
                 </div>
               </div>
               <div className="pb-1">
-                <h1 className="font-display text-2xl font-bold text-text">{sitter.name}</h1>
-                <div className="flex items-center gap-2 text-sm text-muted">
+                <h1 className="font-display text-2xl font-bold text-white drop-shadow-sm">{sitter.name}</h1>
+                <div className="flex items-center gap-2 text-sm text-white/85">
                   <MapPin size={12} />
                   <span>{sitter.location}</span>
                 </div>
@@ -625,9 +646,9 @@ export default function PerfilSitter() {
           </div>
 
           <div className="absolute top-4 right-4 flex gap-2">
-            <button onClick={handleLike} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-bg/70 backdrop-blur-sm transition-colors">
-              <Heart size={16} className={liked ? '' : 'text-muted'} fill={liked ? '#FF7E5F' : 'none'} style={liked ? { color: '#FF7E5F' } : {}} />
-              <span className="text-xs font-semibold" style={liked ? { color: '#FF7E5F' } : { color: 'var(--tw-color-muted, #6b6b6f)' }}>{likes}</span>
+            <button onClick={handleLike} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-black/30 backdrop-blur-sm hover:bg-black/45 transition-colors">
+              <Heart size={16} className={liked ? 'animate-paw-pop' : 'text-white'} fill={liked ? '#FF7E5F' : 'none'} style={liked ? { color: '#FF7E5F' } : {}} />
+              <span className="text-xs font-semibold text-white">{likes}</span>
             </button>
           </div>
         </div>
@@ -640,123 +661,162 @@ export default function PerfilSitter() {
               </span>
             )}
             {sitter.homeInspected && (
-              <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-blue-500/15 text-blue-400 text-xs font-medium">
+              <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-info/15 text-info text-xs font-medium">
                 <Home size={12} /> Casa vistoriada
               </span>
             )}
           </div>
 
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2">
-                <StarRating rating={sitter.rating} size={14} />
-                <span className="text-sm font-medium text-text">{sitter.rating > 0 ? sitter.rating.toFixed(1) : '—'}</span>
-                {sitter.reviewCount > 0 && <span className="text-sm text-muted">({sitter.reviewCount} avaliações)</span>}
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold text-text">R$ {sitter.pricePerDay}</p>
-              <p className="text-xs text-muted">por diária</p>
-            </div>
+          <div className="flex items-center gap-2">
+            <StarRating rating={sitter.rating} size={14} />
+            <span className="text-sm font-medium text-text">{sitter.rating > 0 ? sitter.rating.toFixed(1) : '—'}</span>
+            {sitter.reviewCount > 0 && <span className="text-sm text-muted">({sitter.reviewCount} avaliações)</span>}
           </div>
         </div>
       </div>
 
-      {/* CTA bar */}
-      <div className="card p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+      {/* Mobile-only quick CTA — desktop relies on the sticky booking card */}
+      <div className="card p-5 flex flex-col sm:flex-row items-center justify-between gap-4 lg:hidden">
         <div>
           <p className="font-semibold text-text">Pronto para reservar?</p>
-          <p className="text-sm text-muted">Verifique a disponibilidade e faça sua reserva.</p>
+          <p className="text-sm text-muted">R$ {sitter.pricePerDay} / diária · Verifique a disponibilidade.</p>
         </div>
         <button onClick={() => setShowPayment(true)} className="btn-gradient flex items-center gap-2 w-full sm:w-auto justify-center">
           <Calendar size={16} /> Reservar
         </button>
       </div>
 
-      {/* Sobre */}
-      {sitter.bio && (
-        <div className="card p-6">
-          <p className="text-xs font-medium text-muted uppercase tracking-wider mb-3">Sobre</p>
-          <p className="text-sm text-text leading-relaxed mb-3">{sitter.bio}</p>
-          <p className="text-sm text-muted leading-relaxed">{sitter.experience}</p>
-        </div>
-      )}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_336px] gap-6 items-start">
+        {/* Left column — trust-building content */}
+        <div className="space-y-6 order-2 lg:order-1">
+          {/* Sobre */}
+          {sitter.bio && (
+            <div className="card p-6">
+              <p className="text-xs font-medium text-muted uppercase tracking-wider mb-3">Sobre</p>
+              <p className="text-sm text-text leading-relaxed mb-3">{sitter.bio}</p>
+              <p className="text-sm text-muted leading-relaxed">{sitter.experience}</p>
+            </div>
+          )}
 
-      {/* Serviços */}
-      <div className="card p-6">
-        <p className="text-xs font-medium text-muted uppercase tracking-wider mb-3">Serviços oferecidos</p>
-        <div className="flex flex-wrap gap-2">
-          {sitter.services.map(s => (
-            <span key={s} className="px-3 py-1 rounded-full bg-subtle border border-medium text-xs text-text">{s}</span>
-          ))}
-        </div>
-      </div>
-
-      {/* Galeria */}
-      {sitter.gallery.length > 0 && (
-        <div className="card p-6">
-          <div className="flex items-center gap-2 mb-3">
-            <ImageIcon size={14} className="text-primary" />
-            <p className="text-xs font-medium text-muted uppercase tracking-wider">Fotos da casa</p>
+          {/* Serviços */}
+          <div className="card p-6">
+            <p className="text-xs font-medium text-muted uppercase tracking-wider mb-3">Serviços oferecidos</p>
+            <div className="flex flex-wrap gap-2">
+              {sitter.services.map(s => (
+                <span key={s} className="px-3 py-1 rounded-full bg-subtle border border-medium text-xs text-text">{s}</span>
+              ))}
+            </div>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {sitter.gallery.map((src, i) => (
-              <img key={i} src={src} alt={`Foto da casa de ${sitter.name} ${i + 1}`} className="w-full h-28 object-cover rounded-xl" />
-            ))}
-          </div>
-        </div>
-      )}
 
-      {/* Políticas */}
-      <div className="card p-6">
-        <div className="flex items-center gap-2 mb-3">
-          <ScrollText size={14} className="text-primary" />
-          <p className="text-xs font-medium text-muted uppercase tracking-wider">Políticas</p>
-        </div>
-        <ul className="space-y-2">
-          {sitter.policies.map((policy, i) => (
-            <li key={i} className="flex items-start gap-2 text-sm text-muted">
-              <CheckCircle2 size={14} className="text-primary flex-shrink-0 mt-0.5" />{policy}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Avaliações */}
-      {reviews.length > 0 && (
-        <div className="card p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Star size={14} className="text-primary" />
-            <p className="text-xs font-medium text-muted uppercase tracking-wider">Avaliações</p>
-          </div>
-          <div className="space-y-4">
-            {reviews.map(r => (
-              <div key={r.id} className="border-b border-subtle last:border-0 pb-4 last:pb-0">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-sm flex-shrink-0">
-                    {r.tutorName.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-text">{r.tutorName}</p>
-                    <StarRating rating={r.rating} size={11} />
-                  </div>
-                </div>
-                <p className="text-sm text-muted leading-relaxed">{r.comment}</p>
+          {/* Galeria */}
+          {sitter.gallery.length > 0 && (
+            <div className="card p-6">
+              <div className="flex items-center gap-2 mb-3">
+                <ImageIcon size={14} className="text-primary" />
+                <p className="text-xs font-medium text-muted uppercase tracking-wider">Fotos da casa</p>
               </div>
-            ))}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {sitter.gallery.map((src, i) => (
+                  <div key={i} className="relative overflow-hidden rounded-xl h-28">
+                    <img
+                      src={src}
+                      alt={`Foto da casa de ${sitter.name} ${i + 1}`}
+                      className="w-full h-full object-cover transition-transform duration-500 hover:scale-110 cursor-pointer"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Políticas */}
+          <div className="card p-6">
+            <div className="flex items-center gap-2 mb-3">
+              <ScrollText size={14} className="text-primary" />
+              <p className="text-xs font-medium text-muted uppercase tracking-wider">Políticas</p>
+            </div>
+            <ul className="space-y-2">
+              {sitter.policies.map((policy, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-muted">
+                  <CheckCircle2 size={14} className="text-primary flex-shrink-0 mt-0.5" />{policy}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Avaliações */}
+          {reviews.length > 0 && (
+            <div className="card p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Star size={14} className="text-primary" />
+                <p className="text-xs font-medium text-muted uppercase tracking-wider">Avaliações</p>
+              </div>
+              <div className="space-y-4">
+                {reviews.map(r => (
+                  <div key={r.id} className="border-b border-subtle last:border-0 pb-4 last:pb-0">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-sm flex-shrink-0">
+                        {r.tutorName.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-text">{r.tutorName}</p>
+                        <StarRating rating={r.rating} size={11} />
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted leading-relaxed">{r.comment}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Final CTA */}
+          <div className="card p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <p className="font-semibold text-text">Gostou do perfil de {sitter.name}?</p>
+              <p className="text-sm text-muted">Reserve agora e garanta o melhor cuidado para o seu pet.</p>
+            </div>
+            <button onClick={() => setShowPayment(true)} className="btn-gradient flex items-center gap-2 w-full sm:w-auto justify-center">
+              <Calendar size={16} /> Reservar agora
+            </button>
           </div>
         </div>
-      )}
 
-      {/* Final CTA */}
-      <div className="card p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div>
-          <p className="font-semibold text-text">Gostou do perfil de {sitter.name}?</p>
-          <p className="text-sm text-muted">Reserve agora e garanta o melhor cuidado para o seu pet.</p>
+        {/* Right column — sticky booking card (desktop) */}
+        <div className="order-1 lg:order-2 hidden lg:block lg:sticky lg:top-24">
+          <div className="card p-6 space-y-5">
+            <div>
+              <p className="text-2xl font-bold text-text">R$ {sitter.pricePerDay}</p>
+              <p className="text-xs text-muted">por diária</p>
+            </div>
+
+            <div className="flex items-center gap-2 pb-4 border-b border-subtle">
+              <StarRating rating={sitter.rating} size={13} />
+              <span className="text-sm font-medium text-text">{sitter.rating > 0 ? sitter.rating.toFixed(1) : '—'}</span>
+              {sitter.reviewCount > 0 && <span className="text-xs text-muted">({sitter.reviewCount})</span>}
+            </div>
+
+            <button onClick={() => setShowPayment(true)} className="btn-gradient w-full flex items-center justify-center gap-2">
+              <Calendar size={16} /> Reservar
+            </button>
+
+            <div className="space-y-2.5">
+              {sitter.verified && (
+                <div className="flex items-center gap-2 text-xs text-muted">
+                  <ShieldCheck size={13} className="text-primary flex-shrink-0" /> Identidade verificada
+                </div>
+              )}
+              {sitter.homeInspected && (
+                <div className="flex items-center gap-2 text-xs text-muted">
+                  <Home size={13} className="text-info flex-shrink-0" /> Casa vistoriada
+                </div>
+              )}
+              <div className="flex items-center gap-2 text-xs text-muted">
+                <MapPin size={13} className="text-muted flex-shrink-0" /> {sitter.location}
+              </div>
+            </div>
+          </div>
         </div>
-        <button onClick={() => setShowPayment(true)} className="btn-gradient flex items-center gap-2 w-full sm:w-auto justify-center">
-          <Calendar size={16} /> Reservar agora
-        </button>
       </div>
 
       {showPayment && (

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Calendar, DollarSign, Search, Star, PawPrint, ClipboardList, BadgeCheck, ChevronRight, MessageCircle } from 'lucide-react'
 import StatCard from '../components/StatCard'
 import Pill from '../components/Pill'
+import PawPrintDecor from '../components/PawPrint'
 import { useAuth } from '../context/AuthContext'
 import { useReservas } from '../context/ReservasContext'
 import { api } from '../lib/api'
@@ -46,7 +47,7 @@ function HomeTutor() {
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
           icon={Calendar}
           label="Reservas ativas"
@@ -68,7 +69,8 @@ function HomeTutor() {
         />
       </div>
 
-      <div className="card p-8">
+      <div className="relative card p-8 overflow-hidden">
+        <PawPrintDecor size={140} className="pointer-events-none absolute -bottom-8 -right-6 text-primary/5 rotate-12" />
         <Pill variant="coral">Busca inteligente</Pill>
         <h2 className="font-display text-2xl font-semibold text-text mt-3">
           Descubra o match ideal para a hospedagem do seu pet.
@@ -193,7 +195,7 @@ function HomeCuidador() {
       </div>
 
       {/* Quick actions */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 stagger-children">
         {quickActions.map(a => {
           const Icon = a.icon
           return (

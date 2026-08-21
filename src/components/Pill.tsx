@@ -1,21 +1,15 @@
-﻿interface PillProps {
+interface PillProps {
   children: React.ReactNode
-  variant?: 'default' | 'active' | 'coral'
+  variant?: 'default' | 'active' | 'coral' | 'info' | 'honey'
 }
 
 export default function Pill({ children, variant = 'default' }: PillProps) {
   const classes = {
     default: 'bg-subtle-md text-muted border border-medium',
     active: 'bg-white text-gray-900',
-    coral: 'text-white',
-  }
-
-  if (variant === 'coral') {
-    return (
-      <span className="pill text-white" style={{ backgroundColor: '#FF7E5F' }}>
-        {children}
-      </span>
-    )
+    coral: 'bg-coral text-white',
+    info: 'bg-info/15 text-info',
+    honey: 'bg-honey/15 text-honey',
   }
 
   return (
