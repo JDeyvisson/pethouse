@@ -1,12 +1,14 @@
 import { prisma } from '../lib/prisma'
 
 export const messageRepository = {
-  findByReserva: (reservaId: string) =>
-    prisma.message.findMany({
+  findByReserva: async (reservaId: string, before?: string) =>
+    (await prisma.message.findMany({
       where: { reservaId },
+      ...(before ? { cursor: { id: before }, skip: 1 } : {}),
+      take: 100,
       include: { sender: { select: { id: true, name: true } } },
-      orderBy: { createdAt: 'asc' },
-    }),
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    })).reverse(),
 
   create: (reservaId: string, senderId: string, text: string) =>
     prisma.message.create({

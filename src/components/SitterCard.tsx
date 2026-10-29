@@ -1,4 +1,4 @@
-﻿import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Star, MapPin, ShieldCheck, Home } from 'lucide-react'
 import type { Sitter } from '../data/sitters'
 

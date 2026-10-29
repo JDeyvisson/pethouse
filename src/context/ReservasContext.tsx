@@ -37,6 +37,7 @@ function apiToReserva(r: ApiReserva): Reserva {
 
 interface ReservasContextValue {
   reservas: Reserva[]
+  error: string | null
   loading: boolean
   addReserva: (r: Reserva) => void
   cancelReserva: (id: string) => Promise<void>
@@ -50,6 +51,7 @@ const ReservasContext = createContext<ReservasContextValue | null>(null)
 export function ReservasProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const [reservas, setReservas] = useState<Reserva[]>([])
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [tick, setTick] = useState(0)
 
@@ -59,10 +61,11 @@ export function ReservasProvider({ children }: { children: ReactNode }) {
       setLoading(false)
       return
     }
+    setError(null)
     setLoading(true)
     api.get<ApiReserva[]>('/reservas')
       .then(data => setReservas(data.map(apiToReserva)))
-      .catch(() => setReservas([]))
+      .catch(() => setError('Não foi possível atualizar as reservas.'))
       .finally(() => setLoading(false))
   }, [tick, user?.id])
 
@@ -92,7 +95,7 @@ export function ReservasProvider({ children }: { children: ReactNode }) {
   const refresh = () => setTick(t => t + 1)
 
   return (
-    <ReservasContext.Provider value={{ reservas, loading, addReserva, cancelReserva, startReserva, concludeReserva, refresh }}>
+    <ReservasContext.Provider value={{ reservas, loading, error, addReserva, cancelReserva, startReserva, concludeReserva, refresh }}>
       {children}
     </ReservasContext.Provider>
   )

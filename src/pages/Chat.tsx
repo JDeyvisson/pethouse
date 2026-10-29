@@ -38,6 +38,9 @@ export default function Chat() {
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const firstPage = useRef(true)
+  const activeReserva = useRef<string | null>(null)
+  const [more, setMore] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const isCuidador = user?.role === 'cuidador'
@@ -90,8 +93,10 @@ export default function Chat() {
   const fetchMessages = useCallback(async (reservaId: string) => {
     try {
       const msgs = await api.get<ApiMessage[]>(`/messages/${reservaId}`)
-      setMessages(msgs)
-    } catch { /* ignore */ }
+      if (activeReserva.current !== reservaId) return
+      if (firstPage.current) { setMore(msgs.length === 100); firstPage.current = false }
+      setMessages(prev => [...new Map([...prev, ...msgs].map(m => [m.id, m])).values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id)))
+    } catch { if (activeReserva.current === reservaId) setSendError('Não foi possível atualizar as mensagens.') }
   }, [])
 
   // Auto-select first contact
@@ -102,6 +107,10 @@ export default function Chat() {
   // Load + poll messages when active contact changes
   useEffect(() => {
     if (pollRef.current) clearInterval(pollRef.current)
+    activeReserva.current = active?.reservaId ?? null
+    setMessages([])
+    firstPage.current = true
+    setMore(false)
     if (!active) return
 
     fetchMessages(active.reservaId)
@@ -120,11 +129,13 @@ export default function Chat() {
     setSending(true)
     setSendError(null)
     try {
+      const target = active.reservaId
       const msg = await api.post<ApiMessage>('/messages', {
         reservaId: active.reservaId,
         text: newMessage.trim(),
       })
-      setMessages(prev => [...prev, msg])
+      if (activeReserva.current !== target) return
+      setMessages(prev => [...new Map([...prev, msg].map(m => [m.id, m])).values()])
       setNewMessage('')
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Erro ao enviar mensagem'
@@ -136,6 +147,13 @@ export default function Chat() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-4">
+      {more && active && <button className="btn-outline" onClick={async () => {
+        const target = active.reservaId
+        try {
+          const older = await api.get<ApiMessage[]>(`/messages/${target}?before=${messages[0]?.id}`)
+          if (activeReserva.current === target) { setMessages(prev => [...new Map([...older, ...prev].map(m => [m.id, m])).values()]); setMore(older.length === 100) }
+        } catch { setSendError('Não foi possível carregar o histórico.') }
+      }}>Carregar mensagens anteriores</button>}
       <div>
         <Pill>Chat</Pill>
         <h1 className="font-display text-3xl font-bold text-text mt-3">Mensagens</h1>
@@ -263,7 +281,7 @@ export default function Chat() {
               <form onSubmit={sendMessage} className="flex gap-3 p-4 border-t border-subtle">
                 <input
                   type="text"
-                  value={newMessage}
+                  maxLength={2000} value={newMessage}
                   onChange={e => setNewMessage(e.target.value)}
                   placeholder={active.locked ? 'Chat encerrado para esta reserva' : 'Digite sua mensagem...'}
                   disabled={active.locked || sending}

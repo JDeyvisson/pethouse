@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
+import FormFeedback from '../components/FormFeedback'
+import { todayBrazil } from '../lib/validation'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Star, MapPin, ShieldCheck, Home, Calendar, ArrowLeft, Heart,
-  CheckCircle2, ImageIcon, ScrollText, X, CreditCard, Loader2, PawPrint, Plus,
-  ChevronLeft, ChevronRight,
-} from 'lucide-react'
-import { api, ApiError } from '../lib/api'
+  CheckCircle2, ImageIcon, ScrollText, X } from 'lucide-react'
+import { api } from '../lib/api'
 import { useReservas } from '../context/ReservasContext'
 import Pill from '../components/Pill'
 import PawSpinner from '../components/PawSpinner'
@@ -13,22 +13,9 @@ import type { Sitter } from '../data/sitters'
 
 const BASE = import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:3001'
 
-const MONTHS_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
-const DAYS_PT_MIN = ['D','S','T','Q','Q','S','S']
 
-function isoDate(y: number, m: number, d: number) {
-  return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-}
-function todayIso() {
-  const t = new Date()
-  return isoDate(t.getFullYear(), t.getMonth(), t.getDate())
-}
 function diffDays(a: string, b: string) {
   return Math.round((new Date(b + 'T12:00:00').getTime() - new Date(a + 'T12:00:00').getTime()) / 86400000)
-}
-function fmtIso(iso: string) {
-  const [y, m, d] = iso.split('-')
-  return `${d}/${m}/${y}`
 }
 
 interface ApiHost {
@@ -84,8 +71,8 @@ function hostToSitter(h: ApiHost, pet: MainPet | null = null): Sitter {
     pricePerDay: h.pricePerDay ?? 0,
     services: ['Hospedagem'],
     matchPercent: calcMatchPercent(h, pet),
-    verified: true,
-    homeInspected: true,
+    verified: false,
+    homeInspected: false,
     bio: h.bio ?? '',
     experience: h.hasHostedBefore ? 'Com experiência em hospedagem' : 'Iniciando como anfitrião',
     vetPartner: false,
@@ -93,7 +80,7 @@ function hostToSitter(h: ApiHost, pet: MainPet | null = null): Sitter {
     availableDates: h.availableDates ?? [],
     gallery: (h.housePhotos ?? []).map(p => `${BASE}${p}`),
     reviews: [],
-    policies: ['Cancelamento gratuito até 48h antes', 'Atualização diária sobre o pet'],
+    policies: ['Reserva demonstrativa, sem cobrança', 'Cancelamento antes do início da hospedagem'],
     likesCount: 0,
   }
 }
@@ -108,436 +95,69 @@ function StarRating({ rating, size = 13 }: { rating: number; size?: number }) {
   )
 }
 
-type PayStep = 'idle' | 'processing' | 'success'
-type ModalTab = 'dates' | 'payment'
 
-interface SavedCard { id: string; brand: string; last4: string; expiry: string }
 
-function PaymentModal({ sitter, onClose, onSuccess }: {
-  sitter: Sitter
-  onClose: () => void
-  onSuccess: () => void
-}) {
-  const [step, setStep] = useState<PayStep>('idle')
-  const [tab, setTab] = useState<ModalTab>('dates')
-  const [payMethod, setPayMethod] = useState<'card' | 'pix'>('card')
-  const [card, setCard] = useState({ number: '', holder: '', expiry: '', cvv: '' })
-  const [copied, setCopied] = useState(false)
+function PaymentModal({ sitter, onClose, onSuccess }: { sitter: Sitter; onClose: () => void; onSuccess: () => void }) {
   const [pets, setPets] = useState<ApiPet[]>([])
-  const [petsLoading, setPetsLoading] = useState(true)
-  const [selectedPetId, setSelectedPetId] = useState<string>('')
-  const [payError, setPayError] = useState<string | null>(null)
-  const [savedCards, setSavedCards] = useState<SavedCard[]>([])
-  const [selectedCardId, setSelectedCardId] = useState<string>('new')
-  const [cardsLoading, setCardsLoading] = useState(true)
-
-  // Date range state
-  const [checkin, setCheckin] = useState<string | null>(null)
-  const [checkout, setCheckout] = useState<string | null>(null)
-  const now = new Date()
-  const [calYear, setCalYear] = useState(now.getFullYear())
-  const [calMonth, setCalMonth] = useState(now.getMonth())
-
-  const today = todayIso()
-  const availSet = new Set(sitter.availableDates ?? [])
-  const hasAvailability = availSet.size > 0
-  const nights = checkin && checkout ? Math.max(diffDays(checkin, checkout), 1) : 0
-  const total = sitter.pricePerDay * nights
-
-  const PIX_KEY = 'pet.house.digipet@gmail.com'
-  const copyPix = () => {
-    navigator.clipboard.writeText(PIX_KEY)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
+  const [petId, setPetId] = useState('')
+  const [start, setStart] = useState('')
+  const [end, setEnd] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [ready, setReady] = useState(false)
+  const [done, setDone] = useState(false)
+  const key = useRef({ signature: '', value: crypto.randomUUID() })
+  const dialog = useRef<HTMLDivElement>(null)
+  useEffect(() => { api.get<ApiPet[]>('/pets').then(setPets).then(() => setReady(true)).catch(() => setError('Não foi possível carregar seus pets. Feche e tente novamente.')) }, [])
   useEffect(() => {
-    api.get<ApiPet[]>('/pets').then(data => {
-      setPets(data)
-      if (data.length > 0) setSelectedPetId(data[0].id)
-    }).catch(() => {}).finally(() => setPetsLoading(false))
-    api.get<SavedCard[]>('/payment-cards')
-      .then(cards => {
-        setSavedCards(cards)
-        if (cards.length > 0) setSelectedCardId(cards[0].id)
-      })
-      .catch(() => {})
-      .finally(() => setCardsLoading(false))
-  }, [])
-
-  const formatCardNumber = (v: string) =>
-    v.replace(/\D/g, '').slice(0, 16).replace(/(.{4})/g, '$1 ').trim()
-
-  const formatExpiry = (v: string) => {
-    const digits = v.replace(/\D/g, '').slice(0, 4)
-    return digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits
-  }
-
-  // Calendar navigation
-  const prevMonth = () => {
-    if (calMonth === 0) { setCalYear(y => y - 1); setCalMonth(11) }
-    else setCalMonth(m => m - 1)
-  }
-  const nextMonth = () => {
-    if (calMonth === 11) { setCalYear(y => y + 1); setCalMonth(0) }
-    else setCalMonth(m => m + 1)
-  }
-
-  const handleDayClick = (iso: string) => {
-    if (!availSet.has(iso) || iso < today) return
-    if (!checkin || (checkin && checkout)) {
-      setCheckin(iso); setCheckout(null)
-    } else {
-      if (iso < checkin) { setCheckin(iso); setCheckout(null) }
-      else setCheckout(iso)
+    const previous = document.activeElement as HTMLElement
+    dialog.current?.focus()
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !busy) onClose()
+      if (e.key === 'Tab') {
+        const items = Array.from(dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input,select,a') ?? [])
+        const first = items[0], last = items[items.length - 1]
+        if (e.shiftKey && (document.activeElement === first || document.activeElement === dialog.current)) { e.preventDefault(); last?.focus() }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus() }
+      }
     }
-  }
-
-  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate()
-  const firstDay = new Date(calYear, calMonth, 1).getDay()
-  const cells: (string | null)[] = [
-    ...Array(firstDay).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) => isoDate(calYear, calMonth, i + 1)),
-  ]
-  while (cells.length % 7 !== 0) cells.push(null)
-
-  const handlePay = async (e?: { preventDefault?: () => void }) => {
-    e?.preventDefault?.()
-    if (!selectedPetId) { setPayError('Selecione um pet para continuar.'); return }
-    if (!checkin || !checkout) { setPayError('Selecione as datas de check-in e check-out.'); return }
-    setPayError(null)
-    setStep('processing')
+    document.addEventListener('keydown', handler)
+    return () => { document.removeEventListener('keydown', handler); previous?.focus() }
+  }, [busy, onClose])
+  const nights = start && end ? diffDays(start, end) : 0
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    if (busy || !ready) return
+    setError(null)
+    if (!petId || nights < 1 || nights > 365) { setError('Selecione um pet e um período de 1 a 365 noites.'); return }
+    const available = new Set(sitter.availableDates)
+    const days = Array.from({ length: nights }, (_, i) => new Date(Date.parse(start) + i * 86400000).toISOString().slice(0, 10))
+    if (!days.every(d => available.has(d))) { setError('Há noites indisponíveis no período selecionado.'); return }
+    const signature = [petId, start, end].join('|')
+    if (key.current.signature !== signature) key.current = { signature, value: crypto.randomUUID() }
+    setBusy(true)
     try {
-      await api.post('/reservas', {
-        petId: selectedPetId,
-        hostId: sitter.id,
-        startDate: new Date(checkin + 'T12:00:00').toISOString(),
-        endDate: new Date(checkout + 'T12:00:00').toISOString(),
-        price: total,
-      })
-      setStep('success')
-      setTimeout(() => onSuccess(), 1500)
-    } catch (err) {
-      setStep('idle')
-      setPayError(err instanceof ApiError ? err.message : 'Erro ao processar pagamento.')
-    }
+      await api.post('/reservas', { petId, hostId: sitter.id, startDate: start + 'T12:00:00.000Z', endDate: end + 'T12:00:00.000Z', idempotencyKey: key.current.value })
+      setDone(true)
+    } catch (err) { setError(err instanceof Error ? err.message : 'Não foi possível reservar.') }
+    finally { setBusy(false) }
   }
-
-  return (
-    <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-      onClick={step === 'idle' ? onClose : undefined}
-    >
-      <div className="card w-full max-w-md flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
-        {step === 'success' ? (
-          <div className="p-10 flex flex-col items-center text-center gap-4">
-            <div className="relative w-16 h-16 rounded-full bg-primary/15 flex items-center justify-center animate-scale-in">
-              <CheckCircle2 size={32} className="text-primary animate-paw-pop" style={{ animationDelay: '0.15s' }} />
-              {[0, 1, 2].map(i => (
-                <PawPrint
-                  key={i}
-                  size={14}
-                  className="absolute text-coral animate-float"
-                  style={{
-                    left: `${20 + i * 25}%`,
-                    top: '10%',
-                    animationDelay: `${0.3 + i * 0.12}s`,
-                  }}
-                />
-              ))}
-            </div>
-            <div>
-              <p className="text-xl font-bold text-text font-display">Reserva confirmada!</p>
-              <p className="text-sm text-muted mt-1">Você será redirecionado para suas reservas.</p>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-subtle flex-shrink-0">
-              <h2 className="font-display text-xl font-bold text-text">Reservar</h2>
-              {step === 'idle' && (
-                <button onClick={onClose} className="p-1.5 rounded-lg bg-subtle text-muted hover:text-text transition-colors">
-                  <X size={16} />
-                </button>
-              )}
-            </div>
-
-            {/* Tabs */}
-            <div className="flex border-b border-subtle flex-shrink-0">
-              {(['dates', 'payment'] as const).map(t => (
-                <button key={t} type="button"
-                  onClick={() => setTab(t)}
-                  className={`flex-1 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
-                    tab === t ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-text'
-                  }`}>
-                  {t === 'dates' ? '1. Datas' : '2. Pagamento'}
-                </button>
-              ))}
-            </div>
-
-            <div className="p-6 space-y-5 overflow-y-auto">
-              {payError && (
-                <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-100 text-sm text-red-600">{payError}</div>
-              )}
-
-              {tab === 'dates' ? (
-                <>
-                  {/* Pet selector */}
-                  {petsLoading ? (
-                    <div className="flex items-center gap-2 py-1 text-muted text-sm">
-                      <Loader2 size={14} className="animate-spin" /> Carregando pets…
-                    </div>
-                  ) : pets.length === 0 ? (
-                    <div className="rounded-xl border-2 border-dashed border-medium p-4 text-center space-y-2">
-                      <PawPrint size={24} className="text-muted mx-auto opacity-40" />
-                      <p className="text-sm font-medium text-text">Nenhum pet cadastrado</p>
-                      <p className="text-xs text-muted">Cadastre um pet para poder fazer reservas.</p>
-                      <a
-                        href="/meus-pets/novo"
-                        className="inline-flex items-center gap-1.5 mt-1 px-4 py-2 rounded-xl text-sm font-semibold text-white"
-                        style={{ backgroundColor: '#FF7E5F' }}
-                      >
-                        <PawPrint size={14} /> Cadastrar pet
-                      </a>
-                    </div>
-                  ) : (
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <PawPrint size={14} className="text-muted" />
-                        <p className="text-xs font-medium text-muted uppercase tracking-wider">Qual pet vai se hospedar?</p>
-                      </div>
-                      <select
-                        value={selectedPetId}
-                        onChange={e => setSelectedPetId(e.target.value)}
-                        className="w-full bg-surface-2 border border-medium rounded-xl px-3 py-2.5 text-sm text-text focus:outline-none focus:border-primary"
-                      >
-                        {pets.map(p => <option key={p.id} value={p.id}>{p.name} ({p.species})</option>)}
-                      </select>
-                    </div>
-                  )}
-
-                  {/* Calendar */}
-                  {!hasAvailability ? (
-                    <div className="rounded-xl bg-subtle p-6 text-center">
-                      <Calendar size={28} className="text-muted mx-auto mb-2 opacity-50" />
-                      <p className="text-sm text-muted">Este anfitrião ainda não definiu datas disponíveis.</p>
-                    </div>
-                  ) : (
-                    <div className="select-none">
-                      <p className="text-xs font-medium text-muted uppercase tracking-wider mb-3">
-                        Selecione check-in e check-out
-                      </p>
-
-                      {/* Legend */}
-                      <div className="flex gap-4 mb-3 text-xs text-muted">
-                        <span className="flex items-center gap-1.5">
-                          <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: '#FF7E5F' }} /> Disponível
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          <span className="w-3 h-3 rounded-full bg-primary/20 inline-block" /> Período selecionado
-                        </span>
-                      </div>
-
-                      {/* Navigation */}
-                      <div className="flex items-center justify-between mb-3">
-                        <button type="button" onClick={prevMonth}
-                          className="p-1.5 rounded-lg hover:bg-subtle text-muted hover:text-text transition-colors">
-                          <ChevronLeft size={15} />
-                        </button>
-                        <p className="text-sm font-semibold text-text">{MONTHS_PT[calMonth]} {calYear}</p>
-                        <button type="button" onClick={nextMonth}
-                          className="p-1.5 rounded-lg hover:bg-subtle text-muted hover:text-text transition-colors">
-                          <ChevronRight size={15} />
-                        </button>
-                      </div>
-
-                      {/* Day headers */}
-                      <div className="grid grid-cols-7 mb-1">
-                        {DAYS_PT_MIN.map((d, i) => (
-                          <div key={i} className="text-center text-[10px] font-medium text-muted py-1">{d}</div>
-                        ))}
-                      </div>
-
-                      {/* Cells */}
-                      <div className="grid grid-cols-7 gap-y-1">
-                        {cells.map((iso, idx) => {
-                          if (!iso) return <div key={idx} />
-                          const isAvail = availSet.has(iso) && iso >= today
-                          const isPast = iso < today
-                          const isCheckin = iso === checkin
-                          const isCheckout = iso === checkout
-                          const isInRange = !!(checkin && checkout && iso > checkin && iso < checkout)
-                          const isEndpoint = isCheckin || isCheckout
-                          return (
-                            <button key={iso} type="button"
-                              disabled={!isAvail}
-                              onClick={() => handleDayClick(iso)}
-                              className={`h-9 w-full rounded-lg text-sm font-medium transition-all relative
-                                ${isPast || !isAvail ? 'text-muted/30 cursor-not-allowed' : ''}
-                                ${isInRange ? 'bg-primary/15 rounded-none text-primary' : ''}
-                                ${isEndpoint ? 'text-white shadow-sm rounded-lg z-10' : ''}
-                                ${isAvail && !isEndpoint && !isInRange ? 'hover:bg-primary/10 hover:text-primary text-text' : ''}
-                              `}
-                              style={isEndpoint ? { backgroundColor: '#FF7E5F' } : {}}
-                            >
-                              {new Date(iso + 'T12:00:00').getDate()}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Selected range summary */}
-                  <div className="card-2 rounded-xl p-4 space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted">Anfitrião</span>
-                      <span className="text-text font-medium">{sitter.name}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted">Check-in</span>
-                      <span className={checkin ? 'text-text font-medium' : 'text-muted/50'}>
-                        {checkin ? fmtIso(checkin) : '— Não selecionado'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted">Check-out</span>
-                      <span className={checkout ? 'text-text font-medium' : 'text-muted/50'}>
-                        {checkout ? fmtIso(checkout) : '— Não selecionado'}
-                      </span>
-                    </div>
-                    {nights > 0 && (
-                      <div className="flex justify-between border-t border-subtle pt-2 mt-2">
-                        <span className="text-muted">{checkin === checkout ? '1 diária' : `${nights} noite${nights > 1 ? 's' : ''}`} × R$ {sitter.pricePerDay}</span>
-                        <span className="text-text font-semibold">R$ {total}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    disabled={!checkin || !checkout || !selectedPetId || pets.length === 0}
-                    onClick={() => { setPayError(null); setTab('payment') }}
-                    className="btn-gradient w-full flex items-center justify-center gap-2 py-3 disabled:opacity-40">
-                    Continuar para pagamento
-                  </button>
-                </>
-              ) : (
-                <>
-                  {/* Payment tab */}
-                  <div className="grid grid-cols-2 gap-2">
-                    {([{ id: 'card', label: 'Cartão', icon: <CreditCard size={15} /> }, { id: 'pix', label: 'PIX', icon: <span className="font-bold text-xs">PIX</span> }] as const).map(m => (
-                      <button key={m.id} type="button" onClick={() => setPayMethod(m.id)}
-                        className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${
-                          payMethod === m.id ? 'border-primary bg-primary/10 text-primary' : 'border-medium text-muted hover:border-stronger'
-                        }`}>
-                        {m.icon} {m.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {payMethod === 'card' ? (
-                    <form onSubmit={handlePay} className="space-y-4">
-                      <div className="flex items-center gap-2 mb-1">
-                        <CreditCard size={15} className="text-muted" />
-                        <p className="text-xs font-medium text-muted uppercase tracking-wider">Dados do cartão</p>
-                      </div>
-
-                      {cardsLoading ? (
-                        <div className="flex items-center gap-2 py-2 text-muted text-sm">
-                          <Loader2 size={14} className="animate-spin" /> Carregando cartões...
-                        </div>
-                      ) : savedCards.length > 0 ? (
-                        <div className="space-y-2">
-                          <p className="text-xs text-muted">Cartões salvos</p>
-                          {savedCards.map(sc => (
-                            <label key={sc.id} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedCardId === sc.id ? 'border-primary bg-primary/5' : 'border-medium hover:border-stronger'}`}>
-                              <input type="radio" name="savedCard" value={sc.id} checked={selectedCardId === sc.id} onChange={() => setSelectedCardId(sc.id)} className="sr-only" />
-                              <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${selectedCardId === sc.id ? 'border-primary' : 'border-medium'}`}>
-                                {selectedCardId === sc.id && <div className="w-2 h-2 rounded-full bg-primary" />}
-                              </div>
-                              <CreditCard size={15} className="text-muted flex-shrink-0" />
-                              <span className="text-sm text-text font-medium">{sc.brand} •••• {sc.last4}</span>
-                              <span className="text-xs text-muted ml-auto">Val. {sc.expiry}</span>
-                            </label>
-                          ))}
-                          <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedCardId === 'new' ? 'border-primary bg-primary/5' : 'border-medium hover:border-stronger'}`}>
-                            <input type="radio" name="savedCard" value="new" checked={selectedCardId === 'new'} onChange={() => setSelectedCardId('new')} className="sr-only" />
-                            <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${selectedCardId === 'new' ? 'border-primary' : 'border-medium'}`}>
-                              {selectedCardId === 'new' && <div className="w-2 h-2 rounded-full bg-primary" />}
-                            </div>
-                            <Plus size={15} className="text-muted flex-shrink-0" />
-                            <span className="text-sm text-text">Usar novo cartão</span>
-                          </label>
-                        </div>
-                      ) : null}
-
-                      {(savedCards.length === 0 || selectedCardId === 'new') && (
-                        <>
-                          <div>
-                            <label className="text-xs text-muted">Número do cartão</label>
-                            <input className="input-field mt-1" placeholder="0000 0000 0000 0000"
-                              value={card.number} onChange={e => setCard(p => ({ ...p, number: formatCardNumber(e.target.value) }))} required />
-                          </div>
-                          <div>
-                            <label className="text-xs text-muted">Nome no cartão</label>
-                            <input className="input-field mt-1" placeholder="MARINA COSTA"
-                              value={card.holder} onChange={e => setCard(p => ({ ...p, holder: e.target.value.toUpperCase() }))} required />
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="text-xs text-muted">Validade</label>
-                              <input className="input-field mt-1" placeholder="MM/AA"
-                                value={card.expiry} onChange={e => setCard(p => ({ ...p, expiry: formatExpiry(e.target.value) }))} required />
-                            </div>
-                            <div>
-                              <label className="text-xs text-muted">CVV</label>
-                              <input className="input-field mt-1" placeholder="123" maxLength={4}
-                                value={card.cvv} onChange={e => setCard(p => ({ ...p, cvv: e.target.value.replace(/\D/g, '').slice(0, 4) }))} required />
-                            </div>
-                          </div>
-                        </>
-                      )}
-
-                      <button type="submit" disabled={step === 'processing'}
-                        className="btn-gradient w-full flex items-center justify-center gap-2 py-3 disabled:opacity-60">
-                        {step === 'processing'
-                          ? <PawSpinner size={13} label="Processando..." pawColorClassName="text-white" labelColorClassName="text-white/90" />
-                          : <>Pagar R$ {total}</>}
-                      </button>
-                    </form>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="rounded-xl border border-medium p-4 space-y-3">
-                        <p className="text-xs font-medium text-muted uppercase tracking-wider">Chave PIX</p>
-                        <div className="flex items-center justify-between gap-3 bg-subtle rounded-xl px-3 py-2.5">
-                          <span className="text-sm text-text font-mono">{PIX_KEY}</span>
-                          <button type="button" onClick={copyPix}
-                            className="text-xs text-primary hover:underline flex-shrink-0">
-                            {copied ? 'Copiado!' : 'Copiar'}
-                          </button>
-                        </div>
-                        <div className="rounded-xl bg-subtle flex items-center justify-center h-32 text-xs text-muted">
-                          QR Code — disponível em breve
-                        </div>
-                      </div>
-                      <button type="button" disabled={step === 'processing'}
-                        onClick={handlePay}
-                        className="btn-gradient w-full flex items-center justify-center gap-2 py-3 disabled:opacity-60">
-                        {step === 'processing'
-                          ? <PawSpinner size={13} label="Processando..." pawColorClassName="text-white" labelColorClassName="text-white/90" />
-                          : <>Confirmar via PIX — R$ {total}</>}
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </>
-        )}
-      </div>
+  return <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+    <div ref={dialog} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="booking-title" className="card p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto space-y-4">
+      <div className="flex justify-between gap-4"><h2 id="booking-title" className="text-xl font-bold">Reserva demonstrativa</h2><button aria-label="Fechar reserva" onClick={onClose} disabled={busy}><X /></button></div>
+      <p className="text-sm text-muted">Pagamento simulado: nenhuma cobrança ou transferência será realizada. Não informe dados de cartão.</p>
+      <FormFeedback message={error} />
+      {done ? <><p role="status">Reserva registrada para demonstração. Nenhum pagamento foi realizado.</p><button className="btn-primary" onClick={onSuccess}>Ver reservas</button></> : <form onSubmit={submit} className="space-y-4">
+        <label htmlFor="booking-pet" className="block">Pet</label><select id="booking-pet" className="input-field mt-2" required value={petId} onChange={e => setPetId(e.target.value)}><option value="">Selecione</option>{pets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
+        {ready && !pets.length && <a className="text-primary underline" href="/meus-pets/novo">Cadastre um pet para continuar</a>}
+        <label className="block">Check-in<input className="input-field mt-2" type="date" required min={todayBrazil()} value={start} onChange={e => setStart(e.target.value)} /></label>
+        <label className="block">Check-out<input className="input-field mt-2" type="date" required min={start || todayBrazil()} value={end} onChange={e => setEnd(e.target.value)} /></label>
+        <p>{Math.max(nights, 0)} noite(s) · Valor demonstrativo: R$ {(Math.max(nights, 0) * sitter.pricePerDay).toFixed(2)}</p>
+        <p className="text-xs text-muted">O valor e as vagas serão conferidos ao confirmar.</p>
+        <button className="btn-primary" disabled={busy || !ready || !pets.length}>{busy ? 'Registrando…' : 'Confirmar reserva demonstrativa'}</button>
+      </form>}
     </div>
-  )
+  </div>
 }
 
 export default function PerfilSitter() {

@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { Request, Response, NextFunction } from 'express'
 import { hostSchema } from '../schemas/host.schema'
 import { hostService } from '../services/host.service'
@@ -9,8 +10,8 @@ function fileUrls(files: Express.Multer.File[]) {
 export const hostController = {
   async list(req: Request, res: Response, next: NextFunction) {
     try {
-      const { city, size, species, housingType } = req.query as Record<string, string>
-      const hosts = await hostService.list({ city, size, species, housingType })
+      const { city, size, species, housingType, offset } = z.object({ city: z.string().max(100).optional(), size: z.string().max(50).optional(), species: z.string().max(50).optional(), housingType: z.string().max(50).optional(), offset: z.coerce.number().int().min(0).max(100000).default(0) }).parse(req.query)
+      const hosts = await hostService.list({ city, size, species, housingType, offset })
       res.json(hosts)
     } catch (err) { next(err) }
   },
@@ -36,7 +37,7 @@ export const hostController = {
       const spacePhotos = fileUrls(allFiles['spacePhotos'] ?? [])
       const housePhotos = fileUrls(allFiles['housePhotos'] ?? [])
       const docFile = (allFiles['docPhoto'] ?? [])[0]
-      const docPhotoUrl = docFile ? `/uploads/${docFile.filename}` : undefined
+      const docPhotoUrl = docFile ? `/private-documents/${docFile.filename}` : undefined
       const host = await hostService.create(req.user!.sub, input, spacePhotos, housePhotos, docPhotoUrl)
       res.status(201).json(host)
     } catch (err) { next(err) }
@@ -49,7 +50,7 @@ export const hostController = {
       const spacePhotos = fileUrls(allFiles['spacePhotos'] ?? [])
       const housePhotos = fileUrls(allFiles['housePhotos'] ?? [])
       const docFile = (allFiles['docPhoto'] ?? [])[0]
-      const docPhotoUrl = docFile ? `/uploads/${docFile.filename}` : undefined
+      const docPhotoUrl = docFile ? `/private-documents/${docFile.filename}` : undefined
       const host = await hostService.update(req.user!.sub, input, spacePhotos, housePhotos, docPhotoUrl)
       res.json(host)
     } catch (err) { next(err) }

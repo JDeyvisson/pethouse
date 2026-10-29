@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import FormFeedback from '../components/FormFeedback'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Search, SlidersHorizontal, X, PawPrint } from 'lucide-react'
 import { api } from '../lib/api'
 import type { Sitter } from '../data/sitters'
@@ -67,8 +68,8 @@ function hostToSitter(h: ApiHost, pet: MainPet | null): Sitter {
     pricePerDay: h.pricePerDay ?? 0,
     services: ['Hospedagem'],
     matchPercent: calcMatchPercent(h, pet),
-    verified: true,
-    homeInspected: true,
+    verified: false,
+    homeInspected: false,
     bio: h.bio ?? '',
     experience: h.hasHostedBefore ? 'Com experiência' : 'Sem experiência anterior',
     vetPartner: false,
@@ -82,6 +83,9 @@ function hostToSitter(h: ApiHost, pet: MainPet | null): Sitter {
 }
 
 export default function Buscar() {
+  const requestId = useRef(0)
+  const [error, setError] = useState<string | null>(null)
+  const [hasMore, setHasMore] = useState(false)
   const [query, setQuery] = useState('')
   const [maxPrice, setMaxPrice] = useState(500)
   const [petType, setPetType] = useState('')
@@ -103,15 +107,17 @@ export default function Buscar() {
       .catch(() => {})
   }, [])
 
-  const fetchHosts = useCallback(() => {
+  const fetchHosts = useCallback((offset = 0) => {
+    const request = ++requestId.current
+    setError(null)
     setLoading(true)
-    const params = new URLSearchParams()
+    const params = new URLSearchParams({ offset: String(offset) })
     if (petType) params.set('species', petType)
     if (size) params.set('size', size)
     api.get<ApiHost[]>(`/hosts?${params}`)
-      .then(data => setHosts(data))
-      .catch(() => { /* keep empty */ })
-      .finally(() => setLoading(false))
+      .then(data => { if (request !== requestId.current) return; setHasMore(data.length === 50); setHosts(prev => offset ? [...prev, ...data] : data) })
+      .catch(() => { if (request === requestId.current) setError('Não foi possível carregar anfitriões.') })
+      .finally(() => { if (request === requestId.current) setLoading(false) })
   }, [petType, size])
 
   useEffect(() => { fetchHosts() }, [fetchHosts])
@@ -126,6 +132,8 @@ export default function Buscar() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
+      <FormFeedback message={error} retry={() => fetchHosts()} />
+      {hasMore && <button className="btn-outline" disabled={loading} onClick={() => fetchHosts(hosts.length)}>Carregar mais anfitriões</button>}
       {/* Header */}
       <div>
         <Pill>Tela da busca</Pill>

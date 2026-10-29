@@ -1,24 +1,20 @@
 import { z } from 'zod'
-
+import { requiredText, text, phone, cep } from './common'
+import { TERMS_VERSION } from '../lib/rules'
 export const registerSchema = z.object({
-  name: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres'),
-  email: z.string().email('E-mail inválido'),
-  password: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres'),
-  role: z.enum(['TUTOR', 'CUIDADOR']),
-  phone: z.string().optional(),
-  cep: z.string().optional(),
-  street: z.string().optional(),
-  addressNum: z.string().optional(),
-  complement: z.string().optional(),
-  neighborhood: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
+  name: requiredText(100).min(2, 'Informe pelo menos 2 caracteres'),
+  email: z.string().trim().toLowerCase().max(254).email('E-mail inválido'),
+  password: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres').max(72, 'Máximo de 72 caracteres'),
+  role: z.enum(['TUTOR', 'CUIDADOR']), phone,
+  acceptedTerms: z.literal(true, { error: 'Aceite os termos para continuar' }),
+  termsVersion: z.literal(TERMS_VERSION),
+  cep: cep.optional(), street: text(200).optional(), addressNum: text(20).optional(),
+  complement: text(100).optional(), neighborhood: text(100).optional(), city: text(100).optional(),
+  state: z.string().regex(/^[A-Z]{2}$/, 'UF inválida').optional(),
 })
-
 export const loginSchema = z.object({
-  email: z.string().email('E-mail inválido'),
-  password: z.string().min(1, 'Senha obrigatória'),
+  email: z.string().trim().toLowerCase().max(254).email('E-mail inválido'),
+  password: z.string().min(1, 'Senha obrigatória').max(72),
 })
-
 export type RegisterInput = z.infer<typeof registerSchema>
 export type LoginInput = z.infer<typeof loginSchema>

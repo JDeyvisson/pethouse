@@ -9,7 +9,7 @@
   --color-surface:   255 255 255;   /* #FFFFFF                   */
   --color-surface-2: 241 239 235;   /* #F1EFEB warm light gray   */
   --color-text:       28  28  30;   /* #1C1C1E near black        */
-  --color-muted:     107 107 111;   /* #6B6B6F medium gray       */
+  --color-muted:      94  94  99;   /* #6B6B6F medium gray       */
 
   /* Subtle border / bg layers — flip between modes */
   --border-subtle:   rgba(0,   0,   0,   0.08);
@@ -129,7 +129,7 @@ aside, header, main {
 
   .btn-gradient {
     background-image: linear-gradient(135deg, rgb(var(--color-coral)) 0%, #ff9a6f 100%);
-    @apply text-white rounded-xl px-6 py-3 font-semibold transition-all;
+    @apply text-[#1c1c1e] rounded-xl px-6 py-3 font-semibold transition-all;
   }
   .btn-gradient:hover { filter: brightness(1.06); }
 
@@ -220,3 +220,12 @@ aside, header, main {
     animation: shimmer 1.6s ease-in-out infinite;
   }
 }
+
+/* Keyboard access and reduced-motion preferences. */
+:focus-visible { outline: 3px solid #5e8b7e; outline-offset: 3px; }
+label:has(input.sr-only:focus-visible) { outline: 3px solid #5e8b7e; outline-offset: 3px; border-radius: 8px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+.dark .text-primary { color: #8cc4b2; }

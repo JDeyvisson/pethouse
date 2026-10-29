@@ -39,6 +39,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
         </button>
 
         <button
+          aria-label={unreadCount ? `Notificações, ${unreadCount} não lidas` : 'Notificações'}
           onClick={() => navigate('/notificacoes')}
           className="relative p-2 rounded-xl text-muted hover:text-text hover:bg-subtle transition-colors"
         >
@@ -49,14 +50,10 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
         </button>
 
         <button
-          onClick={() => navigate('/perfil')}
+          aria-label="Meu perfil" onClick={() => navigate('/perfil')}
           className="flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-xl bg-surface-2 border border-medium hover:border-primary/50 transition-colors group"
         >
-          <img
-            src="https://randomuser.me/api/portraits/women/90.jpg"
-            alt={user?.name ?? 'Usuário'}
-            className="w-6 h-6 rounded-full object-cover ring-2 ring-transparent group-hover:ring-primary/30 transition-all"
-          />
+          <span aria-hidden="true" className="w-6 h-6 rounded-full bg-primary/15 text-primary text-xs flex items-center justify-center">{user?.name.charAt(0).toUpperCase() ?? 'U'}</span>
           <span className="hidden sm:inline text-sm font-medium text-text">{user?.name ?? 'Usuário'}</span>
         </button>
       </div>

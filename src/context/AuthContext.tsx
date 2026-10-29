@@ -33,7 +33,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(JSON.parse(stored) as AuthUser)
       } catch { /* ignore corrupt data */ }
     }
+    const expired = () => { localStorage.removeItem('ph_token'); localStorage.removeItem('ph_user'); setUser(null) }
+    window.addEventListener('ph:unauthorized', expired)
     setReady(true)
+    return () => window.removeEventListener('ph:unauthorized', expired)
   }, [])
 
   function login(token: string, u: AuthUser) {

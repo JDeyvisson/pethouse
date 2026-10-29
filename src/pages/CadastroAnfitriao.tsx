@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import LegalLinks from '../components/LegalLinks'
+import { validCpf, lookupCep, TERMS_VERSION } from '../lib/validation'
+import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   User, MapPin, Home, PawPrint, Star, ShieldCheck, FileText,
@@ -58,7 +60,7 @@ const CAPACIDADE_OPTS: { value: Exclude<Capacidade, ''>; label: string }[] = [
   { value: '1', label: '1 pet' },
   { value: '2', label: '2 pets' },
   { value: '3', label: '3 pets' },
-  { value: '4+', label: '4+ pets' },
+  { value: '4+', label: '4 pets' },
 ]
 const TEMPO_OPTS: { value: Exclude<TempoCuidado, ''>; label: string }[] = [
   { value: 'nunca', label: 'Nunca (primeira vez)' },
@@ -116,16 +118,16 @@ function pwScore(s: string): number {
 // ── Sub-components ─────────────────────────────────────────────────────────────
 const Req = () => <span className="text-red-500 ml-0.5">*</span>
 
-const Lbl = ({ children }: { children: React.ReactNode }) => (
-  <p className="text-xs font-medium text-muted uppercase tracking-wider">{children}</p>
+const Lbl = ({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) => (
+  <label htmlFor={htmlFor} className="block text-xs font-medium text-muted uppercase tracking-wider">{children}</label>
 )
 
 const Hint = ({ text }: { text: string }) => (
   <p className="text-xs text-muted italic mt-1.5">{text}</p>
 )
 
-const Err = ({ msg }: { msg?: string }) =>
-  msg ? <p role="alert" className="text-xs text-red-500 mt-1.5">{msg}</p> : null
+const Err = ({ msg, id }: { msg?: string; id?: string }) =>
+  msg ? <p id={id} role="alert" className="text-xs text-red-500 mt-1.5">{msg}</p> : null
 
 function SectionHeader({ icon, num, title }: { icon: React.ReactNode; num: number; title: string }) {
   return (
@@ -325,7 +327,7 @@ function HostCalendar({ selected, onChange }: { selected: string[]; onChange: (d
   return (
     <div className="select-none">
       <div className="flex items-center justify-between mb-3">
-        <button type="button" onClick={prevMonth}
+        <button type="button" aria-label="Mês anterior" onClick={prevMonth}
           className="p-1.5 rounded-lg hover:bg-subtle text-muted hover:text-text transition-colors">
           <ChevronLeft size={15} />
         </button>
@@ -335,7 +337,7 @@ function HostCalendar({ selected, onChange }: { selected: string[]; onChange: (d
             <p className="text-xs text-primary mt-0.5">{selectedThisMonth} dia{selectedThisMonth > 1 ? 's' : ''} selecionado{selectedThisMonth > 1 ? 's' : ''}</p>
           )}
         </div>
-        <button type="button" onClick={nextMonth}
+        <button type="button" aria-label="Próximo mês" onClick={nextMonth}
           className="p-1.5 rounded-lg hover:bg-subtle text-muted hover:text-text transition-colors">
           <ChevronRight size={15} />
         </button>
@@ -448,7 +450,7 @@ function PendingFieldsSummary({ form, isLoggedIn }: { form: FormData; isLoggedIn
   if (!f.experienciaEspeciais)                              missing.push('Experiência com necessidades especiais (Sim/Não)')
   if (!f.cuidouAntes)                                       missing.push('Já cuidou de pets (Sim/Não)')
   if (!f.tempoCuidado)                                      missing.push('Tempo de experiência')
-  if (f.cpf.replace(/\D/g, '').length !== 11)               missing.push('CPF')
+  if (!validCpf(f.cpf))               missing.push('CPF')
   if (!f.aceitaTermos)                                      missing.push('Aceitar Termos de Uso')
   if (!f.confirmaVeracidade)                                missing.push('Confirmar veracidade dos dados')
   if (!f.aceitaResponsabilidade)                            missing.push('Aceitar responsabilidade')
@@ -478,6 +480,8 @@ export default function CadastroAnfitriao() {
   const { user } = useAuth()
 
   // Pre-fill credentials if coming from Cadastrar (user already logged in)
+  const cepRequest = useRef(0)
+  const [docFile, setDocFile] = useState<File | null>(null)
   const [form, setForm] = useState<FormData>(() => ({
     ...INIT,
     nome: user?.name || '',
@@ -506,6 +510,8 @@ export default function CadastroAnfitriao() {
   }
 
   const handleCep = (e: React.ChangeEvent<HTMLInputElement>) => {
+    ++cepRequest.current
+    setCepLoading(false)
     const masked = formatCep(e.target.value)
     setForm(p => ({ ...p, cep: masked }))
     setErrors(p => ({ ...p, cep: undefined }))
@@ -520,26 +526,22 @@ export default function CadastroAnfitriao() {
 
   const handleDocUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) setForm(p => ({ ...p, docPreview: URL.createObjectURL(file) }))
+    if (!file) return
+    if (!['image/jpeg', 'image/png'].includes(file.type) || file.size > 5 * 1024 * 1024) { setSubmitError('Documento: envie JPG ou PNG de até 5 MB.'); return }
+    if (form.docPreview) URL.revokeObjectURL(form.docPreview)
+    setDocFile(file)
+    setForm(p => ({ ...p, docPreview: URL.createObjectURL(file) }))
   }
 
   const fetchViaCep = async (digits: string) => {
+    const request = ++cepRequest.current
     setCepLoading(true)
     try {
-      const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`)
-      const data = await res.json()
-      if (!data.erro) {
-        setForm(p => ({
-          ...p,
-          logradouro: data.logradouro || p.logradouro,
-          cidade: data.localidade || p.cidade,
-        }))
-      }
-    } catch {
-      // fail silently — user fills manually
-    } finally {
-      setCepLoading(false)
-    }
+      const data = await lookupCep(digits)
+      if (request === cepRequest.current) setForm(p => ({ ...p, logradouro: data.logradouro || '', cidade: data.localidade }))
+    } catch (err) {
+      if (request === cepRequest.current) setErrors(p => ({ ...p, cep: err instanceof Error ? err.message : 'Consulta indisponível. Tente novamente.' }))
+    } finally { if (request === cepRequest.current) setCepLoading(false) }
   }
 
   const handleHousePhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -601,7 +603,7 @@ export default function CadastroAnfitriao() {
     if (!f.cuidouAntes) e.cuidouAntes = 'Selecione uma opção'
     if (!f.tempoCuidado) e.tempoCuidado = 'Selecione o tempo de experiência'
 
-    if (f.cpf.replace(/\D/g, '').length !== 11) e.cpf = 'CPF inválido'
+    if (!validCpf(f.cpf)) e.cpf = 'CPF inválido'
 
     if (!f.aceitaTermos) e.aceitaTermos = 'Obrigatório aceitar os termos'
     if (!f.confirmaVeracidade) e.confirmaVeracidade = 'Obrigatório confirmar veracidade'
@@ -615,7 +617,9 @@ export default function CadastroAnfitriao() {
     if (Object.keys(errs).length > 0) {
       setErrors(errs)
       setTimeout(() => {
-        document.querySelector('[data-error="true"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        const target = document.querySelector('[data-error="true"]')
+        target?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        target?.querySelector<HTMLElement>('input,select,textarea,button')?.focus()
       }, 50)
       return
     }
@@ -624,6 +628,11 @@ export default function CadastroAnfitriao() {
     try {
       const f = form
       const fd = new FormData()
+      fd.append('acceptedTerms', String(f.aceitaTermos))
+      fd.append('confirmsAccuracy', String(f.confirmaVeracidade))
+      fd.append('acceptsResponsibility', String(f.aceitaResponsabilidade))
+      fd.append('termsVersion', TERMS_VERSION)
+      if (docFile) fd.append('docPhoto', docFile)
       fd.append('cep', f.cep)
       fd.append('city', f.cidade)
       fd.append('street', f.logradouro)
@@ -649,13 +658,14 @@ export default function CadastroAnfitriao() {
       if (f.sobreVoce) fd.append('bio', f.sobreVoce)
       if (f.cpf) fd.append('cpf', f.cpf)
       const price = parseFloat(pricePerDay)
-      if (!isNaN(price) && price > 0) fd.append('pricePerDay', String(price))
+      if (!Number.isFinite(price) || price <= 0) throw new Error('Informe um valor de diária maior que zero.')
+      fd.append('pricePerDay', String(price))
       fd.append('availableDates', JSON.stringify(availableDates))
       housePhotos.forEach(h => fd.append('housePhotos', h.file))
       await api.upload('/hosts', fd)
       navigate('/home')
     } catch (err) {
-      setSubmitError(err instanceof ApiError ? err.message : 'Erro ao enviar cadastro. Tente novamente.')
+      setSubmitError(err instanceof ApiError && err.fields ? Object.values(err.fields).join('. ') : err instanceof Error ? err.message : 'Erro ao enviar cadastro.')
     } finally {
       setSubmitting(false)
     }
@@ -710,54 +720,54 @@ export default function CadastroAnfitriao() {
 
               <div className="space-y-4">
                 <div data-error={errors.nome ? 'true' : undefined}>
-                  <Lbl>Nome Completo <Req /></Lbl>
-                  <input name="nome" type="text" value={form.nome} onChange={handleChange}
+                  <Lbl htmlFor="CadastroAnfitriao-nome">Nome Completo <Req /></Lbl>
+                  <input name="nome" id="CadastroAnfitriao-nome" aria-invalid={!!errors.nome} aria-describedby={errors.nome ? "host-error-nome" : undefined} type="text" value={form.nome} onChange={handleChange}
                     placeholder="Maria da Silva" className={ic(errors.nome)} />
-                  <Err msg={errors.nome} />
+                  <Err id="host-error-nome" msg={errors.nome} />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div data-error={errors.email ? 'true' : undefined}>
-                    <Lbl>E-mail <Req /></Lbl>
-                    <input name="email" type="email" value={form.email} onChange={handleChange}
+                    <Lbl htmlFor="CadastroAnfitriao-email">E-mail <Req /></Lbl>
+                    <input name="email" id="CadastroAnfitriao-email" aria-invalid={!!errors.email} aria-describedby={errors.email ? "host-error-email" : undefined} type="email" value={form.email} onChange={handleChange}
                       placeholder="maria@email.com" className={ic(errors.email)} />
-                    <Err msg={errors.email} />
+                    <Err id="host-error-email" msg={errors.email} />
                   </div>
                   <div data-error={errors.telefone ? 'true' : undefined}>
-                    <Lbl>Telefone <Req /></Lbl>
-                    <input name="telefone" type="tel" value={form.telefone} onChange={handlePhone}
+                    <Lbl htmlFor="CadastroAnfitriao-telefone">Telefone <Req /></Lbl>
+                    <input name="telefone" id="CadastroAnfitriao-telefone" aria-invalid={!!errors.telefone} aria-describedby={errors.telefone ? "host-error-telefone" : undefined} type="tel" value={form.telefone} onChange={handlePhone}
                       placeholder="(11) 99999-9999" className={ic(errors.telefone)} />
-                    <Err msg={errors.telefone} />
+                    <Err id="host-error-telefone" msg={errors.telefone} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div data-error={errors.senha ? 'true' : undefined}>
-                    <Lbl>Senha <Req /></Lbl>
+                    <Lbl htmlFor="CadastroAnfitriao-senha">Senha <Req /></Lbl>
                     <div className="relative">
-                      <input name="senha" type={showSenha ? 'text' : 'password'} value={form.senha}
+                      <input name="senha" id="CadastroAnfitriao-senha" aria-invalid={!!errors.senha} aria-describedby={errors.senha ? "host-error-senha" : undefined} type={showSenha ? 'text' : 'password'} value={form.senha}
                         onChange={handleChange} placeholder="••••••••"
                         className={`${ic(errors.senha)} pr-10`} />
-                      <button type="button" onClick={() => setShowSenha(v => !v)}
+                      <button type="button" aria-label="Mostrar ou ocultar senha" onClick={() => setShowSenha(v => !v)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-text">
                         {showSenha ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
                     <PasswordStrengthBar senha={form.senha} />
-                    <Err msg={errors.senha} />
+                    <Err id="host-error-senha" msg={errors.senha} />
                   </div>
                   <div data-error={errors.confirmarSenha ? 'true' : undefined}>
-                    <Lbl>Confirmar Senha <Req /></Lbl>
+                    <Lbl htmlFor="CadastroAnfitriao-confirmarSenha">Confirmar Senha <Req /></Lbl>
                     <div className="relative">
-                      <input name="confirmarSenha" type={showConfirmar ? 'text' : 'password'}
+                      <input name="confirmarSenha" id="CadastroAnfitriao-confirmarSenha" aria-invalid={!!errors.confirmarSenha} aria-describedby={errors.confirmarSenha ? "host-error-confirmarSenha" : undefined} type={showConfirmar ? 'text' : 'password'}
                         value={form.confirmarSenha} onChange={handleChange} placeholder="••••••••"
                         className={`${ic(errors.confirmarSenha)} pr-10`} />
-                      <button type="button" onClick={() => setShowConfirmar(v => !v)}
+                      <button type="button" aria-label="Mostrar ou ocultar confirmação" onClick={() => setShowConfirmar(v => !v)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-text">
                         {showConfirmar ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
-                    <Err msg={errors.confirmarSenha} />
+                    <Err id="host-error-confirmarSenha" msg={errors.confirmarSenha} />
                   </div>
                 </div>
               </div>
@@ -771,9 +781,9 @@ export default function CadastroAnfitriao() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div data-error={errors.cep ? 'true' : undefined}>
-                  <Lbl>CEP <Req /></Lbl>
+                  <Lbl htmlFor="CadastroAnfitriao-cep">CEP <Req /></Lbl>
                   <div className="relative">
-                    <input name="cep" type="text" value={form.cep} onChange={handleCep}
+                    <input name="cep" id="CadastroAnfitriao-cep" aria-invalid={!!errors.cep} aria-describedby={errors.cep ? "host-error-cep" : undefined} type="text" value={form.cep} onChange={handleCep}
                       placeholder="00000-000" maxLength={9} className={ic(errors.cep)} />
                     {cepLoading && (
                       <Loader2 size={15}
@@ -781,33 +791,33 @@ export default function CadastroAnfitriao() {
                     )}
                   </div>
                   <Hint text="Preenchimento automático do endereço" />
-                  <Err msg={errors.cep} />
+                  <Err id="host-error-cep" msg={errors.cep} />
                 </div>
                 <div data-error={errors.cidade ? 'true' : undefined}>
-                  <Lbl>Cidade <Req /></Lbl>
-                  <input name="cidade" type="text" value={form.cidade} onChange={handleChange}
+                  <Lbl htmlFor="CadastroAnfitriao-cidade">Cidade <Req /></Lbl>
+                  <input name="cidade" id="CadastroAnfitriao-cidade" aria-invalid={!!errors.cidade} aria-describedby={errors.cidade ? "host-error-cidade" : undefined} type="text" value={form.cidade} onChange={handleChange}
                     placeholder="São Paulo" className={ic(errors.cidade)} />
-                  <Err msg={errors.cidade} />
+                  <Err id="host-error-cidade" msg={errors.cidade} />
                 </div>
               </div>
 
               <div data-error={errors.logradouro ? 'true' : undefined}>
-                <Lbl>Logradouro <Req /></Lbl>
-                <input name="logradouro" type="text" value={form.logradouro} onChange={handleChange}
+                <Lbl htmlFor="CadastroAnfitriao-logradouro">Logradouro <Req /></Lbl>
+                <input name="logradouro" id="CadastroAnfitriao-logradouro" aria-invalid={!!errors.logradouro} aria-describedby={errors.logradouro ? "host-error-logradouro" : undefined} type="text" value={form.logradouro} onChange={handleChange}
                   placeholder="Rua das Flores" className={ic(errors.logradouro)} />
-                <Err msg={errors.logradouro} />
+                <Err id="host-error-logradouro" msg={errors.logradouro} />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div data-error={errors.numero ? 'true' : undefined}>
-                  <Lbl>Número <Req /></Lbl>
-                  <input name="numero" type="text" value={form.numero} onChange={handleChange}
+                  <Lbl htmlFor="CadastroAnfitriao-numero">Número <Req /></Lbl>
+                  <input name="numero" id="CadastroAnfitriao-numero" aria-invalid={!!errors.numero} aria-describedby={errors.numero ? "host-error-numero" : undefined} type="text" value={form.numero} onChange={handleChange}
                     placeholder="42" className={ic(errors.numero)} />
-                  <Err msg={errors.numero} />
+                  <Err id="host-error-numero" msg={errors.numero} />
                 </div>
                 <div>
-                  <Lbl>Complemento</Lbl>
-                  <input name="complemento" type="text" value={form.complemento} onChange={handleChange}
+                  <Lbl htmlFor="CadastroAnfitriao-complemento">Complemento</Lbl>
+                  <input name="complemento" id="CadastroAnfitriao-complemento" type="text" value={form.complemento} onChange={handleChange}
                     placeholder="Apto 12, Bloco B" className={ic()} />
                 </div>
               </div>
@@ -838,8 +848,8 @@ export default function CadastroAnfitriao() {
               </div>
 
               <div>
-                <Lbl>Descrição do espaço</Lbl>
-                <textarea name="descricaoEspaco" value={form.descricaoEspaco} onChange={handleChange}
+                <Lbl htmlFor="CadastroAnfitriao-descricaoEspaco">Descrição do espaço</Lbl>
+                <textarea id="CadastroAnfitriao-descricaoEspaco" maxLength={2000} name="descricaoEspaco" value={form.descricaoEspaco} onChange={handleChange}
                   placeholder="Descreva seu espaço: quintal, área de lazer, cômodos onde o pet pode circular..."
                   rows={3} className={`${ic()} resize-none`} />
                 <Hint text="Opcional — uma boa descrição aumenta suas chances de ser escolhido" />
@@ -860,12 +870,12 @@ export default function CadastroAnfitriao() {
                   onChange={v => setF('outrosAnimais', v)} error={errors.outrosAnimais} />
                 {form.outrosAnimais === 'sim' && (
                   <div className="mt-3" data-error={errors.descricaoAnimais ? 'true' : undefined}>
-                    <Lbl>Quais animais? <Req /></Lbl>
-                    <textarea name="descricaoAnimais" value={form.descricaoAnimais}
+                    <Lbl htmlFor="CadastroAnfitriao-descricaoAnimais">Quais animais? <Req /></Lbl>
+                    <textarea id="CadastroAnfitriao-descricaoAnimais" maxLength={2000} name="descricaoAnimais" value={form.descricaoAnimais}
                       onChange={handleChange}
                       placeholder="Ex.: 1 gato castrado de 3 anos, muito tranquilo com outros animais..."
                       rows={2} className={`${ic(errors.descricaoAnimais)} resize-none`} />
-                    <Err msg={errors.descricaoAnimais} />
+                    <Err id="host-error-descricaoAnimais" msg={errors.descricaoAnimais} />
                   </div>
                 )}
               </div>
@@ -876,11 +886,11 @@ export default function CadastroAnfitriao() {
                   onChange={v => setF('criancas', v)} error={errors.criancas} />
                 {form.criancas === 'sim' && (
                   <div className="mt-3" data-error={errors.faixaEtaria ? 'true' : undefined}>
-                    <Lbl>Faixa etária das crianças <Req /></Lbl>
-                    <input name="faixaEtaria" type="text" value={form.faixaEtaria}
+                    <Lbl htmlFor="CadastroAnfitriao-faixaEtaria">Faixa etária das crianças <Req /></Lbl>
+                    <input name="faixaEtaria" id="CadastroAnfitriao-faixaEtaria" aria-invalid={!!errors.faixaEtaria} aria-describedby={errors.faixaEtaria ? "host-error-faixaEtaria" : undefined} type="text" value={form.faixaEtaria}
                       onChange={handleChange} placeholder="Ex.: 3 e 7 anos"
                       className={ic(errors.faixaEtaria)} />
-                    <Err msg={errors.faixaEtaria} />
+                    <Err id="host-error-faixaEtaria" msg={errors.faixaEtaria} />
                   </div>
                 )}
               </div>
@@ -942,16 +952,16 @@ export default function CadastroAnfitriao() {
               </div>
 
               <div>
-                <Lbl>Raças e espécies com mais experiência</Lbl>
-                <textarea name="racasExperiencia" value={form.racasExperiencia} onChange={handleChange}
+                <Lbl htmlFor="CadastroAnfitriao-racasExperiencia">Raças e espécies com mais experiência</Lbl>
+                <textarea id="CadastroAnfitriao-racasExperiencia" maxLength={2000} name="racasExperiencia" value={form.racasExperiencia} onChange={handleChange}
                   placeholder="Ex.: Golden Retriever, Border Collie, gatos siameses..."
                   rows={2} className={`${ic()} resize-none`} />
                 <Hint text="Opcional" />
               </div>
 
               <div>
-                <Lbl>Conte sobre você e sua hospedagem</Lbl>
-                <textarea name="sobreVoce" value={form.sobreVoce} onChange={handleChange}
+                <Lbl htmlFor="CadastroAnfitriao-sobreVoce">Conte sobre você e sua hospedagem</Lbl>
+                <textarea id="CadastroAnfitriao-sobreVoce" maxLength={2000} name="sobreVoce" value={form.sobreVoce} onChange={handleChange}
                   placeholder="O que os tutores precisam saber sobre você? O que torna sua hospedagem especial?"
                   rows={4} className={`${ic()} resize-none`} />
                 <Hint text="Opcional — este texto aparecerá no seu perfil público" />
@@ -966,11 +976,11 @@ export default function CadastroAnfitriao() {
             <div className="space-y-6">
               {/* Preço */}
               <div>
-                <Lbl>Valor por diária (R$)</Lbl>
+                <Lbl htmlFor="host-price">Valor por diária (R$)</Lbl>
                 <div className="relative mt-2 max-w-xs">
                   <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
                   <input
-                    type="number"
+                    id="host-price" type="number"
                     min="1"
                     step="0.01"
                     value={pricePerDay}
@@ -1007,14 +1017,14 @@ export default function CadastroAnfitriao() {
 
             <div className="space-y-5">
               <div className="bg-primary/5 border border-primary/20 rounded-xl px-4 py-3 text-xs text-primary">
-                Suas informações são protegidas e usadas apenas para verificação. Sua identidade será confirmada em até 24h.
+                Suas informações são protegidas e usadas apenas para verificação. O envio não confirma sua identidade. A verificação ainda não está disponível.
               </div>
 
               <div data-error={errors.cpf ? 'true' : undefined}>
-                <Lbl>CPF <Req /></Lbl>
-                <input name="cpf" type="text" value={form.cpf} onChange={handleCpf}
+                <Lbl htmlFor="CadastroAnfitriao-cpf">CPF <Req /></Lbl>
+                <input name="cpf" id="CadastroAnfitriao-cpf" aria-invalid={!!errors.cpf} aria-describedby={errors.cpf ? "host-error-cpf" : undefined} type="text" value={form.cpf} onChange={handleCpf}
                   placeholder="000.000.000-00" maxLength={14} className={ic(errors.cpf)} />
-                <Err msg={errors.cpf} />
+                <Err id="host-error-cpf" msg={errors.cpf} />
               </div>
 
               <div>
@@ -1034,7 +1044,7 @@ export default function CadastroAnfitriao() {
                       </div>
                       <div className="text-center">
                         <p className="text-sm text-muted font-medium">Enviar foto do documento</p>
-                        <p className="text-xs text-muted mt-0.5">JPG ou PNG · Frente e verso</p>
+                        <p className="text-xs text-muted mt-0.5">JPG ou PNG · Uma imagem legível, até 5 MB</p>
                       </div>
                     </>
                   )}
@@ -1059,11 +1069,7 @@ export default function CadastroAnfitriao() {
             <div className="space-y-4">
               <TermCheckbox checked={form.aceitaTermos} onChange={v => setF('aceitaTermos', v)}
                 error={errors.aceitaTermos}>
-                Li e aceito os{' '}
-                <span className="text-primary font-medium">Termos de Uso</span>
-                {' '}e a{' '}
-                <span className="text-primary font-medium">Política de Privacidade</span>
-                {' '}da plataforma Pet House
+                <LegalLinks />
               </TermCheckbox>
 
               <TermCheckbox checked={form.confirmaVeracidade} onChange={v => setF('confirmaVeracidade', v)}

@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+import { formatPhone } from '../lib/validation'
 import { useState, useRef, useEffect } from 'react'
 import { Shield, CreditCard, Plus, Check, Save, Camera, X, Loader2 } from 'lucide-react'
 import Pill from '../components/Pill'
@@ -86,7 +88,7 @@ export default function Perfil() {
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
+    setForm(prev => ({ ...prev, [e.target.name]: e.target.name === 'phone' ? formatPhone(e.target.value) : e.target.value }))
     setSaved(false)
     setSaveError(null)
   }
@@ -99,7 +101,7 @@ export default function Perfil() {
     try {
       const updated = await api.patch<{ id: string; name: string; email: string; role: string; phone?: string | null }>('/users/me', {
         name: form.name,
-        phone: form.phone || undefined,
+        phone: form.phone || null,
       })
       setForm(prev => ({ ...prev, name: updated.name, phone: updated.phone ?? '' }))
       // Update cached auth user so sidebar name refreshes
@@ -133,7 +135,7 @@ const handleAddCard = async (e: React.FormEvent) => {
       setPaymentCards(prev => [card, ...prev])
       setCardForm({ brand: '', last4: '', expiry: '', holder: '' })
       setShowAddCard(false)
-    } catch { /* ignore */ } finally {
+    } catch (err) { setSaveError(err instanceof Error ? err.message : 'Não foi possível atualizar o cartão.') } finally {
       setCardSaving(false)
     }
   }
@@ -142,7 +144,7 @@ const handleAddCard = async (e: React.FormEvent) => {
     try {
       await api.delete(`/payment-cards/${id}`)
       setPaymentCards(prev => prev.filter(c => c.id !== id))
-    } catch { /* ignore */ }
+    } catch (err) { setSaveError(err instanceof Error ? err.message : 'Não foi possível atualizar o cartão.') }
   }
 
   const roleLabel = user?.role === 'cuidador' ? 'Anfitrião' : 'Tutor'
@@ -178,7 +180,7 @@ const handleAddCard = async (e: React.FormEvent) => {
             ) : (
               <Initials name={form.name || '?'} size={80} />
             )}
-            <label className={`absolute -bottom-2 -right-2 p-1.5 rounded-lg bg-primary text-white shadow cursor-pointer hover:opacity-90 transition-opacity ${photoUploading ? 'opacity-60 pointer-events-none' : ''}`}>
+            <label className={`absolute -bottom-2 -right-2 p-1.5 rounded-lg bg-primary text-white shadow cursor-pointer hover:opacity-90 transition-opacity ${photoUploading ? 'opacity-60 pointer-events-none' : ''}`} htmlFor="Perfil-name">
               {photoUploading ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
               <input ref={photoInputRef} type="file" accept="image/*" className="sr-only" onChange={handlePhotoChange} disabled={photoUploading} />
             </label>
@@ -189,7 +191,7 @@ const handleAddCard = async (e: React.FormEvent) => {
             <div className="flex items-center gap-1.5 mt-2">
               <Pill variant="active">{roleLabel}</Pill>
               <span className="px-2 py-0.5 rounded-full bg-primary/15 text-primary text-xs font-medium">
-                Conta verificada
+                Conta cadastrada
               </span>
             </div>
           </div>
@@ -217,15 +219,15 @@ const handleAddCard = async (e: React.FormEvent) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="text-xs font-medium text-muted uppercase tracking-wider">Nome completo</label>
-            <input name="name" type="text" value={form.name} onChange={handleChange} className="input-field mt-2" required />
+            <input name="name" id="Perfil-name" type="text" value={form.name} onChange={handleChange} className="input-field mt-2" required />
           </div>
           <div>
-            <label className="text-xs font-medium text-muted uppercase tracking-wider">Email</label>
-            <input name="email" type="email" value={form.email} className="input-field mt-2 opacity-60 cursor-not-allowed" readOnly />
+            <label className="text-xs font-medium text-muted uppercase tracking-wider" htmlFor="Perfil-email">Email</label>
+            <input name="email" id="Perfil-email" type="email" value={form.email} className="input-field mt-2 opacity-60 cursor-not-allowed" readOnly />
           </div>
           <div>
-            <label className="text-xs font-medium text-muted uppercase tracking-wider">Telefone</label>
-            <input name="phone" type="tel" value={form.phone} onChange={handleChange} className="input-field mt-2" placeholder="(11) 99999-8888" />
+            <label className="text-xs font-medium text-muted uppercase tracking-wider" htmlFor="Perfil-phone">Telefone</label>
+            <input name="phone" id="Perfil-phone" type="tel" maxLength={15} value={form.phone} onChange={handleChange} className="input-field mt-2" placeholder="(11) 99999-8888" />
           </div>
         </div>
 
@@ -328,7 +330,7 @@ const handleAddCard = async (e: React.FormEvent) => {
             <p className="text-sm text-text">Alterar senha</p>
             <p className="text-xs text-muted">Mantenha sua conta segura com uma senha forte</p>
           </div>
-          <button className="text-xs text-primary hover:underline">Configurar</button>
+          <Link to="/conta?purpose=change" className="text-xs text-primary hover:underline">Configurar</Link>
         </div>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import FormFeedback from '../components/FormFeedback'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -243,6 +244,7 @@ function DetailModal({ reserva, role, onClose, onNavigate, onCancel, onStart, on
 }
 
 export default function Reservas() {
+  const feedback = useReservas()
   const navigate = useNavigate()
   const { user } = useAuth()
   const { reservas, cancelReserva, startReserva, concludeReserva, loading } = useReservas()
@@ -255,7 +257,7 @@ export default function Reservas() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <Pill>Reservas</Pill>
+        <FormFeedback message={feedback.error} retry={feedback.refresh} /><Pill>Reservas</Pill>
         <h1 className="font-display text-3xl font-bold text-text mt-3">Minhas reservas</h1>
         <p className="text-muted text-sm mt-1">Acompanhe todas as suas reservas, do agendamento à conclusão.</p>
       </div>

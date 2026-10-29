@@ -1,3 +1,6 @@
+import { publicHostSelect } from './host.repository'
+import { ReservaStatus } from '@prisma/client'
+import { AppError } from '../middleware/error'
 import { prisma } from '../lib/prisma'
 import type { ReservaInput } from '../schemas/reserva.schema'
 
@@ -7,7 +10,7 @@ export const reservaRepository = {
       where: { tutorId },
       include: {
         pet: true,
-        host: { include: { user: { select: { id: true, name: true } } } },
+        host: { select: publicHostSelect },
       },
       orderBy: { startDate: 'desc' },
     }),
@@ -25,9 +28,9 @@ export const reservaRepository = {
   findById: (id: string) =>
     prisma.reserva.findUnique({ where: { id } }),
 
-  create: (data: ReservaInput & { tutorId: string; service?: string }) =>
-    prisma.reserva.create({ data: { ...data, status: 'PROXIMA' } }),
-
-  updateStatus: (id: string, status: string) =>
-    prisma.reserva.update({ where: { id }, data: { status: status as never } }),
+  updateStatus: async (id: string, status: ReservaStatus, expected: ReservaStatus) => {
+    const result = await prisma.reserva.updateMany({ where: { id, status: expected }, data: { status } })
+    if (!result.count) throw new AppError('STATUS_CONFLICT', 'A reserva foi alterada. Atualize a página.', 409)
+    return prisma.reserva.findUniqueOrThrow({ where: { id } })
+  },
 }

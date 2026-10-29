@@ -2,6 +2,8 @@ import { Role } from '@prisma/client'
 import { prisma } from '../lib/prisma'
 
 interface CreateUserData {
+  termsVersion?: string
+  termsAcceptedAt?: Date
   name: string
   email: string
   password: string
@@ -18,7 +20,7 @@ interface CreateUserData {
 
 export const userRepository = {
   findByEmail: (email: string) =>
-    prisma.user.findUnique({ where: { email } }),
+    prisma.user.findFirst({ where: { email: { equals: email.trim(), mode: 'insensitive' } } }),
 
   findById: (id: string) =>
     prisma.user.findUnique({

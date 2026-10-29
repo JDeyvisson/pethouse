@@ -1,0 +1,41 @@
+name: QA
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: qa_local_only
+          POSTGRES_DB: pethouse_qa
+        ports: ['55432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:qa_local_only@localhost:55432/pethouse_qa
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.14.0'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+      - run: npm ci
+      - run: npm ci --prefix server
+      - run: npm run db:generate --prefix server
+      - run: npm exec --prefix server -- prisma migrate deploy --schema server/prisma/schema.prisma
+      - run: npm run build
+      - run: npm test --prefix server
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qa-evidence
+          path: |
+            test-results
+            docs/qa-evidence

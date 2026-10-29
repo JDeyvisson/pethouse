@@ -5,7 +5,8 @@ export const reservaSchema = z.object({
   hostId: z.string().min(1, 'Anfitrião obrigatório'),
   startDate: z.string().datetime({ message: 'Data de início inválida' }),
   endDate: z.string().datetime({ message: 'Data de término inválida' }),
-  price: z.number().positive('Preço deve ser positivo'),
+  price: z.number().positive('Preço deve ser positivo').optional(),
+  idempotencyKey: z.string().uuid().optional(),
 })
 
 export type ReservaInput = z.infer<typeof reservaSchema>

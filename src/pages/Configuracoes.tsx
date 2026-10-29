@@ -1,4 +1,5 @@
-﻿import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import {
   Moon, Sun, KeyRound, CreditCard,
   AlertTriangle, Trash2, ChevronRight, HelpCircle,
@@ -8,6 +9,7 @@ import { useTheme } from '../context/ThemeContext'
 
 
 export default function Configuracoes() {
+  const navigate = useNavigate()
   const { theme, setTheme } = useTheme()
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
@@ -56,27 +58,27 @@ export default function Configuracoes() {
           <p className="font-semibold text-text text-sm">Conta</p>
         </div>
         <div>
-          <button className="w-full flex items-center gap-4 px-6 py-4 hover:bg-subtle transition-colors text-left border-t border-subtle">
+          <button onClick={() => navigate('/conta?purpose=change')} className="w-full flex items-center gap-4 px-6 py-4 hover:bg-subtle transition-colors text-left border-t border-subtle">
             <div className="p-2 rounded-xl bg-subtle">
               <KeyRound size={16} className="text-muted" />
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-text">Alterar senha</p>
-              <p className="text-xs text-muted">Última alteração há 3 meses</p>
+              <p className="text-xs text-muted">Atualize sua senha de acesso</p>
             </div>
             <ChevronRight size={14} className="text-muted flex-shrink-0" />
           </button>
-          <button className="w-full flex items-center gap-4 px-6 py-4 hover:bg-subtle transition-colors text-left border-t border-subtle">
+          <button onClick={() => navigate('/dashboard')} className="w-full flex items-center gap-4 px-6 py-4 hover:bg-subtle transition-colors text-left border-t border-subtle">
             <div className="p-2 rounded-xl bg-subtle">
               <CreditCard size={16} className="text-muted" />
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-text">Gerenciar assinatura</p>
-              <p className="text-xs text-muted">Plano gratuito</p>
+              <p className="text-xs text-muted">Consulte o estado da sua assinatura</p>
             </div>
             <ChevronRight size={14} className="text-muted flex-shrink-0" />
           </button>
-          <button className="w-full flex items-center gap-4 px-6 py-4 hover:bg-subtle transition-colors text-left border-t border-subtle">
+          <button onClick={() => navigate('/ajuda')} className="w-full flex items-center gap-4 px-6 py-4 hover:bg-subtle transition-colors text-left border-t border-subtle">
             <div className="p-2 rounded-xl bg-subtle">
               <HelpCircle size={16} className="text-muted" />
             </div>
@@ -100,7 +102,7 @@ export default function Configuracoes() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-text">Excluir conta</p>
-              <p className="text-xs text-muted">Remove permanentemente seus dados, pets e histórico</p>
+              <p className="text-xs text-muted">Solicite a exclusão ao atendimento</p>
             </div>
             <button
               onClick={() => setConfirmingDelete(true)}
@@ -111,8 +113,8 @@ export default function Configuracoes() {
           </div>
         ) : (
           <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
-            <p className="text-sm text-text font-medium">Tem certeza que deseja excluir sua conta?</p>
-            <p className="text-xs text-muted mt-1">Essa ação não pode ser desfeita. Todos os seus dados serão removidos permanentemente.</p>
+            <p className="text-sm text-text font-medium">Solicitar exclusão da conta</p>
+            <p className="text-xs text-muted mt-1">O atendimento analisará os registros vinculados à conta. Nada será excluído ao abrir o pedido.</p>
             <div className="flex gap-3 mt-3">
               <button
                 onClick={() => setConfirmingDelete(false)}
@@ -120,8 +122,8 @@ export default function Configuracoes() {
               >
                 Cancelar
               </button>
-              <button className="flex items-center gap-1.5 text-xs font-medium text-white bg-red-500 hover:bg-red-600 rounded-xl py-2 px-4 transition-colors">
-                <Trash2 size={13} /> Confirmar exclusão
+              <button onClick={() => navigate('/ajuda?assunto=exclusao')} className="flex items-center gap-1.5 text-xs font-medium text-white bg-red-500 hover:bg-red-600 rounded-xl py-2 px-4 transition-colors">
+                <Trash2 size={13} /> Abrir atendimento
               </button>
             </div>
           </div>

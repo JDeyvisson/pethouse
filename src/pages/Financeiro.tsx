@@ -1,3 +1,4 @@
+import FormFeedback from '../components/FormFeedback'
 import { useState, useEffect } from 'react'
 import { TrendingUp, TrendingDown, DollarSign, CreditCard, Wallet } from 'lucide-react'
 import Pill from '../components/Pill'
@@ -21,23 +22,25 @@ function formatDate(d: string) {
 }
 
 function FinanceiroTutor() {
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [transactions, setTransactions] = useState<ApiTransaction[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     api.get<ApiTransaction[]>('/financeiro/transactions')
       .then(setTransactions)
-      .catch(() => { /* keep empty */ })
+      .catch(() => setLoadError('Não foi possível carregar as transações.'))
       .finally(() => setLoading(false))
   }, [])
 
   const saidas = transactions.filter(t => t.type === 'expense').reduce((a, t) => a + t.amount, 0)
   const creditos = transactions.filter(t => t.type === 'income').reduce((a, t) => a + t.amount, 0)
 
+  if (loadError) return <FormFeedback message={loadError} retry={() => window.location.reload()} />
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <Pill>Financeiro</Pill>
+        <p role="status" className="text-sm text-primary">Valores demonstrativos de reservas. Nenhuma cobrança ou transferência foi realizada.</p><Pill>Financeiro</Pill>
         <h1 className="font-display text-3xl font-bold text-text mt-3">Financeiro</h1>
         <p className="text-muted text-sm mt-1">Acompanhe seus gastos e pagamentos.</p>
       </div>
@@ -102,13 +105,14 @@ function FinanceiroTutor() {
 }
 
 function FinanceiroCuidador() {
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [transactions, setTransactions] = useState<ApiTransaction[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     api.get<ApiTransaction[]>('/financeiro/transactions')
       .then(setTransactions)
-      .catch(() => { /* keep empty */ })
+      .catch(() => setLoadError('Não foi possível carregar as transações.'))
       .finally(() => setLoading(false))
   }, [])
 
@@ -119,10 +123,11 @@ function FinanceiroCuidador() {
     .filter(t => new Date(t.date) >= monthStart)
     .reduce((a, t) => a + t.amount, 0)
 
+  if (loadError) return <FormFeedback message={loadError} retry={() => window.location.reload()} />
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <Pill>Financeiro</Pill>
+        <p role="status" className="text-sm text-primary">Valores demonstrativos de reservas. Nenhuma cobrança ou transferência foi realizada.</p><Pill>Financeiro</Pill>
         <h1 className="font-display text-3xl font-bold text-text mt-3">Financeiro</h1>
         <p className="text-muted text-sm mt-1">Acompanhe seus ganhos e recebimentos.</p>
       </div>

@@ -7,7 +7,7 @@ export const subscriptionRepository = {
   upsert: (userId: string, endDate: Date) =>
     prisma.subscription.upsert({
       where: { userId },
-      create: { userId, endDate, startDate: new Date() },
-      update: { endDate, startDate: new Date() },
+      create: { userId, endDate, startDate: new Date(), plan: 'DEMONSTRACAO' },
+      update: { endDate, startDate: new Date(), plan: 'DEMONSTRACAO' },
     }),
 }

@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react'
+import FormFeedback from '../components/FormFeedback'
+import { validBirthDate, validPhone, todayBrazil } from '../lib/validation'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft, PawPrint, Heart, Zap, Phone,
@@ -114,9 +116,9 @@ function Helper({ children }: { children: React.ReactNode }) {
   return <p className="text-xs text-muted italic mt-1.5">{children}</p>
 }
 
-function ErrorText({ msg }: { msg?: string }) {
+function ErrorText({ msg, id }: { msg?: string; id?: string }) {
   if (!msg) return null
-  return <p className="text-xs text-red-500 mt-1.5" role="alert">{msg}</p>
+  return <p id={id} className="text-xs text-red-500 mt-1.5" role="alert">{msg}</p>
 }
 
 function SectionHeader({ icon: Icon, num, title }: {
@@ -232,13 +234,24 @@ export default function CadastroPet() {
   const { id } = useParams<{ id?: string }>()
   const isEdit = Boolean(id)
   const [form, setForm] = useState<FormData>(emptyForm)
+  const [saving, setSaving] = useState(false)
+  const submitting = useRef(false)
+  const createRequest = useRef({ signature: '', key: crypto.randomUUID() })
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [loadingPet, setLoadingPet] = useState(!!id)
+  const [retry, setRetry] = useState(0)
   const [errors, setErrors] = useState<Errors>({})
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
 
   useEffect(() => {
     if (!id) return
+    let active = true
+    setLoadingPet(true)
+    setLoadError(null)
     api.get<Record<string, unknown>>(`/pets/${id}`)
       .then(p => {
+        if (!active) return
         const b = (v: unknown): YesNo => v === true ? 'sim' : v === false ? 'nao' : ''
         setForm(prev => ({
           ...prev,
@@ -283,8 +296,11 @@ export default function CadastroPet() {
           setFotoPreview(`${base}${p.photoUrl}`)
         }
       })
-      .catch(() => {})
-  }, [id])
+      .catch(err => { if (active) setLoadError(err instanceof ApiError ? err.message : 'Não foi possível carregar o pet.') })
+      .finally(() => { if (active) setLoadingPet(false) })
+    return () => { active = false }
+  }, [id, retry])
+  useEffect(() => () => { if (fotoPreview?.startsWith('blob:')) URL.revokeObjectURL(fotoPreview) }, [fotoPreview])
   // ── Field handlers ───────────────────────────────────────────────────────
 
   function field(key: keyof FormData) {
@@ -330,7 +346,7 @@ export default function CadastroPet() {
   function validate(): Errors {
     const e: Errors = {}
     const req = (k: keyof FormData, msg = 'Campo obrigatório') => {
-      if (!form[k]) e[k] = msg
+      if (typeof form[k] === 'string' ? !(form[k] as string).trim() : !form[k]) e[k] = msg
     }
 
     // S1
@@ -340,6 +356,11 @@ export default function CadastroPet() {
     req('sexo', 'Selecione o sexo')
     req('porte', 'Selecione o porte')
 
+    if (form.nome.trim().length > 80) e.nome = 'Máximo de 80 caracteres'
+    if (form.rg.length > 30) e.rg = 'Máximo de 30 caracteres'
+    if (form.dataNascimento && !validBirthDate(form.dataNascimento)) e.dataNascimento = 'Informe uma data real, não futura'
+    if (!validPhone(form.telefoneContato)) e.telefoneContato = 'Informe DDD e telefone com 10 ou 11 dígitos'
+    if (form.telefoneClinica && !validPhone(form.telefoneClinica)) e.telefoneClinica = 'Telefone inválido'
     // S2
     req('vacinasEmDia', 'Selecione uma opção')
     req('usaMedicamento', 'Selecione uma opção')
@@ -375,51 +396,61 @@ export default function CadastroPet() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (submitting.current || loadingPet || loadError) return
+    setSubmitError(null)
     const errs = validate()
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs)
       setTimeout(() => {
         const el = document.querySelector('[data-error="true"]')
+        if (el) (el.querySelector('input,select,textarea') as HTMLElement)?.focus()
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
       }, 50)
       return
     }
 
+    submitting.current = true
+    setSaving(true)
     const f = form
     const fd = new FormData()
+    if (!isEdit) {
+      const signature = JSON.stringify({ ...f, foto: f.foto ? [f.foto.name, f.foto.size, f.foto.lastModified] : null })
+      if (createRequest.current.signature !== signature) createRequest.current = { signature, key: crypto.randomUUID() }
+      fd.append('requestKey', createRequest.current.key)
+    }
     fd.append('name', f.nome)
     fd.append('species', f.especie)
     fd.append('breed', f.raca)
     fd.append('sex', f.sexo)
     fd.append('size', f.porte)
-    if (f.rg) fd.append('rg', f.rg)
-    if (f.dataNascimento) fd.append('birthDate', f.dataNascimento)
+    fd.append('rg', f.rg)
+    fd.append('birthDate', f.dataNascimento)
     if (f.foto) fd.append('photo', f.foto)
     fd.append('vaccinesUpToDate', String(f.vacinasEmDia === 'sim'))
     fd.append('usesMedication', String(f.usaMedicamento === 'sim'))
-    if (f.descricaoMedicamento) fd.append('medicationDesc', f.descricaoMedicamento)
-    if (f.condicaoSaude) fd.append('healthCondition', f.condicaoSaude)
+    fd.append('medicationDesc', f.descricaoMedicamento)
+    fd.append('healthCondition', f.condicaoSaude)
     fd.append('foodRestriction', String(f.restricaoAlimentar === 'sim'))
-    if (f.descricaoRestricao) fd.append('foodRestDesc', f.descricaoRestricao)
-    if (f.racaoConsome) fd.append('foodBrand', f.racaoConsome)
+    fd.append('foodRestDesc', f.descricaoRestricao)
+    fd.append('foodBrand', f.racaoConsome)
     if (f.comportamentoCaes) fd.append('behaviorDogs', f.comportamentoCaes)
     if (f.comportamentoGatos) fd.append('behaviorCats', f.comportamentoGatos)
     if (f.comportamentoCriancas) fd.append('behaviorKids', f.comportamentoCriancas)
     if (f.nivelEnergia) fd.append('energyLevel', f.nivelEnergia)
     fd.append('hasEscaped', String(f.jaFugiu === 'sim'))
-    if (f.descricaoFuga) fd.append('escapeDesc', f.descricaoFuga)
+    fd.append('escapeDesc', f.descricaoFuga)
     fd.append('fearOfNoise', String(f.medoBarulho === 'sim'))
     fd.append('staysAlone', String(f.ficaSozinho === 'sim'))
     fd.append('sleepsAlone', String(f.dormeSozinho === 'sim'))
     fd.append('neutered', String(f.castrado === 'sim'))
-    if (f.infoComportamento) fd.append('behaviorNotes', f.infoComportamento)
-    if (f.nomeContato) fd.append('emergencyName', f.nomeContato)
-    if (f.telefoneContato) fd.append('emergencyPhone', f.telefoneContato)
-    if (f.parentesco) fd.append('emergencyRelation', f.parentesco)
-    if (f.clinicaVet) fd.append('vetClinic', f.clinicaVet)
-    if (f.telefoneClinica) fd.append('vetPhone', f.telefoneClinica)
-    if (f.enderecoClinica) fd.append('vetAddress', f.enderecoClinica)
+    fd.append('behaviorNotes', f.infoComportamento)
+    fd.append('emergencyName', f.nomeContato)
+    fd.append('emergencyPhone', f.telefoneContato)
+    fd.append('emergencyRelation', f.parentesco)
+    fd.append('vetClinic', f.clinicaVet)
+    fd.append('vetPhone', f.telefoneClinica)
+    fd.append('vetAddress', f.enderecoClinica)
 
     try {
       if (isEdit && id) {
@@ -429,7 +460,15 @@ export default function CadastroPet() {
       }
       navigate('/meus-pets')
     } catch (err) {
-      setErrors({ nome: err instanceof ApiError ? err.message : isEdit ? 'Erro ao salvar pet.' : 'Erro ao cadastrar pet.' })
+      const mapping: Record<string, keyof FormData | 'fotoErro'> = { name: 'nome', species: 'especie', breed: 'raca', sex: 'sexo', size: 'porte', rg: 'rg', birthDate: 'dataNascimento', vaccinesUpToDate: 'vacinasEmDia', usesMedication: 'usaMedicamento', foodRestriction: 'restricaoAlimentar', foodBrand: 'racaoConsome', behaviorDogs: 'comportamentoCaes', behaviorCats: 'comportamentoGatos', behaviorKids: 'comportamentoCriancas', energyLevel: 'nivelEnergia', hasEscaped: 'jaFugiu', fearOfNoise: 'medoBarulho', staysAlone: 'ficaSozinho', sleepsAlone: 'dormeSozinho', neutered: 'castrado', emergencyName: 'nomeContato', emergencyRelation: 'parentesco', emergencyPhone: 'telefoneContato', vetPhone: 'telefoneClinica', medicationDesc: 'descricaoMedicamento', foodRestDesc: 'descricaoRestricao', escapeDesc: 'descricaoFuga' }
+      const fields: Errors = {}
+      if (err instanceof ApiError && err.fields) Object.entries(err.fields).forEach(([key, value]) => { if (mapping[key]) fields[mapping[key]] = value })
+      setErrors(fields)
+      setSubmitError(err instanceof ApiError ? err.message : 'Não foi possível salvar. Seus dados foram preservados.')
+      requestAnimationFrame(() => { const target = document.querySelector<HTMLElement>('[data-error="true"] input, [data-error="true"] select, [role="alert"]'); target?.focus(); target?.scrollIntoView({ block: 'center', behavior: 'smooth' }) })
+    } finally {
+      submitting.current = false
+      setSaving(false)
     }
   }
 
@@ -457,31 +496,41 @@ export default function CadastroPet() {
         </p>
       </div>
 
+      <FormFeedback message={submitError} />
+      <FormFeedback message={loadError} retry={() => { setLoadError(null); setLoadingPet(true); setRetry(r => r + 1) }} />
+      {loadingPet && <p role="status">Carregando pet…</p>}
       <form onSubmit={handleSubmit} noValidate className="space-y-6">
+        <fieldset disabled={saving || loadingPet || !!loadError} className="space-y-6 min-w-0">
 
         {/* ── SECTION 1 — Identificação ─────────────────────────────────── */}
         <div className="card p-6">
           <SectionHeader icon={PawPrint} num={1} title="Identificação" />
 
           {/* Nome */}
+          {fotoPreview && <button type="button" className="text-sm text-primary underline" onClick={async () => {
+            try { if (isEdit && id) await api.delete(`/pets/${id}/photo`); setFotoPreview(null); setForm(p => ({ ...p, foto: null })) }
+            catch (err) { setSubmitError(err instanceof Error ? err.message : 'Não foi possível remover a foto.') }
+          }}>Remover foto do pet</button>}
           <div className="mb-5" {...errAttr('nome')}>
             <FieldLabel htmlFor="nome" required>Nome do Pet</FieldLabel>
-            <input id="nome" type="text" className="input-field" placeholder="Ex.: Thor"
+            <input maxLength={80} id="nome" aria-invalid={!!errors.nome} aria-describedby={errors.nome ? "pet-error-nome" : undefined} type="text" className="input-field" placeholder="Ex.: Thor"
               value={form.nome} onChange={field('nome')} aria-required />
-            <ErrorText msg={errors.nome} />
+            <ErrorText id="pet-error-nome" msg={errors.nome} />
           </div>
 
           {/* RG | Data de Nascimento */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
             <div>
               <FieldLabel htmlFor="rg">RG do Pet</FieldLabel>
-              <input id="rg" type="text" className="input-field" placeholder="Número do registro (opcional)"
+              <input maxLength={30} id="rg" aria-invalid={!!errors.rg} aria-describedby={errors.rg ? "pet-error-rg" : undefined} type="text" className="input-field" placeholder="Número do registro (opcional)"
                 value={form.rg} onChange={field('rg')} />
+              <ErrorText id="pet-error-rg" msg={errors.rg} />
             </div>
             <div>
               <FieldLabel htmlFor="dataNascimento">Data de Nascimento</FieldLabel>
-              <input id="dataNascimento" type="date" className="input-field"
+              <input min="1900-01-01" max={todayBrazil()} id="dataNascimento" aria-invalid={!!errors.dataNascimento} aria-describedby={errors.dataNascimento ? "pet-error-dataNascimento" : undefined} type="date" className="input-field"
                 value={form.dataNascimento} onChange={field('dataNascimento')} />
+              <ErrorText id="pet-error-dataNascimento" msg={errors.dataNascimento} />
             </div>
           </div>
 
@@ -489,18 +538,18 @@ export default function CadastroPet() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
             <div {...errAttr('especie')}>
               <FieldLabel htmlFor="especie" required>Espécie</FieldLabel>
-              <select id="especie" className="input-field"
+              <select id="especie" aria-invalid={!!errors.especie} aria-describedby={errors.especie ? "pet-error-especie" : undefined} className="input-field"
                 value={form.especie} onChange={field('especie')} aria-required>
                 <option value="">Selecione</option>
                 {SPECIES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
-              <ErrorText msg={errors.especie} />
+              <ErrorText id="pet-error-especie" msg={errors.especie} />
             </div>
             <div {...errAttr('raca')}>
               <FieldLabel htmlFor="raca" required>Raça</FieldLabel>
-              <input id="raca" type="text" className="input-field" placeholder="Ex.: Golden Retriever"
+              <input id="raca" aria-invalid={!!errors.raca} aria-describedby={errors.raca ? "pet-error-raca" : undefined} type="text" className="input-field" placeholder="Ex.: Golden Retriever"
                 value={form.raca} onChange={field('raca')} aria-required />
-              <ErrorText msg={errors.raca} />
+              <ErrorText id="pet-error-raca" msg={errors.raca} />
             </div>
           </div>
 
@@ -508,21 +557,21 @@ export default function CadastroPet() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
             <div {...errAttr('sexo')}>
               <FieldLabel htmlFor="sexo" required>Sexo</FieldLabel>
-              <select id="sexo" className="input-field"
+              <select id="sexo" aria-invalid={!!errors.sexo} aria-describedby={errors.sexo ? "pet-error-sexo" : undefined} className="input-field"
                 value={form.sexo} onChange={field('sexo')} aria-required>
                 <option value="">Selecione</option>
                 {SEXO.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
-              <ErrorText msg={errors.sexo} />
+              <ErrorText id="pet-error-sexo" msg={errors.sexo} />
             </div>
             <div {...errAttr('porte')}>
               <FieldLabel htmlFor="porte" required>Porte</FieldLabel>
-              <select id="porte" className="input-field"
+              <select id="porte" aria-invalid={!!errors.porte} aria-describedby={errors.porte ? "pet-error-porte" : undefined} className="input-field"
                 value={form.porte} onChange={field('porte')} aria-required>
                 <option value="">Selecione</option>
                 {PORTE.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
-              <ErrorText msg={errors.porte} />
+              <ErrorText id="pet-error-porte" msg={errors.porte} />
             </div>
           </div>
 
@@ -552,7 +601,7 @@ export default function CadastroPet() {
               <input type="file" accept="image/jpeg,image/png" className="sr-only" onChange={handleFoto} />
             </label>
             <Helper>Formatos aceitos: JPG ou PNG. Tamanho máximo: 5 MB.</Helper>
-            <ErrorText msg={errors.fotoErro} />
+            <ErrorText id="pet-error-fotoErro" msg={errors.fotoErro} />
           </div>
         </div>
 
@@ -581,7 +630,7 @@ export default function CadastroPet() {
                   onChange={field('descricaoMedicamento')}
                   aria-required
                 />
-                <ErrorText msg={errors.descricaoMedicamento} />
+                <ErrorText id="pet-error-descricaoMedicamento" msg={errors.descricaoMedicamento} />
               </div>
             )}
           </div>
@@ -589,7 +638,7 @@ export default function CadastroPet() {
           {/* Condição de saúde */}
           <div className="mb-6">
             <FieldLabel htmlFor="condicaoSaude">O pet possui alguma condição de saúde especial?</FieldLabel>
-            <textarea id="condicaoSaude" className="input-field resize-none" rows={3}
+            <textarea maxLength={2000} id="condicaoSaude" className="input-field resize-none" rows={3}
               placeholder="Deixe em branco se não houver."
               value={form.condicaoSaude} onChange={field('condicaoSaude')} />
             <Helper>Ex: diabetes, problemas cardíacos, alergias respiratórias.</Helper>
@@ -609,7 +658,7 @@ export default function CadastroPet() {
                   onChange={field('descricaoRestricao')}
                   aria-required
                 />
-                <ErrorText msg={errors.descricaoRestricao} />
+                <ErrorText id="pet-error-descricaoRestricao" msg={errors.descricaoRestricao} />
               </div>
             )}
           </div>
@@ -617,10 +666,10 @@ export default function CadastroPet() {
           {/* Ração */}
           <div {...errAttr('racaoConsome')}>
             <FieldLabel htmlFor="racaoConsome" required>Qual ração ou alimento o pet consome?</FieldLabel>
-            <input id="racaoConsome" type="text" className="input-field"
+            <input id="racaoConsome" aria-invalid={!!errors.racaoConsome} aria-describedby={errors.racaoConsome ? "pet-error-racaoConsome" : undefined} type="text" className="input-field"
               placeholder="Ex.: Royal Canin Golden Retriever"
               value={form.racaoConsome} onChange={field('racaoConsome')} aria-required />
-            <ErrorText msg={errors.racaoConsome} />
+            <ErrorText id="pet-error-racaoConsome" msg={errors.racaoConsome} />
           </div>
         </div>
 
@@ -668,7 +717,7 @@ export default function CadastroPet() {
                   placeholder="Descreva as situações em que isso ocorreu."
                   value={form.descricaoFuga} onChange={field('descricaoFuga')} aria-required
                 />
-                <ErrorText msg={errors.descricaoFuga} />
+                <ErrorText id="pet-error-descricaoFuga" msg={errors.descricaoFuga} />
               </div>
             )}
           </div>
@@ -704,7 +753,7 @@ export default function CadastroPet() {
           {/* Info adicional */}
           <div>
             <FieldLabel htmlFor="infoComportamento">Informações adicionais sobre o comportamento</FieldLabel>
-            <textarea id="infoComportamento" className="input-field resize-none" rows={3}
+            <textarea maxLength={2000} id="infoComportamento" className="input-field resize-none" rows={3}
               placeholder="Deixe em branco se não houver."
               value={form.infoComportamento} onChange={field('infoComportamento')} />
             <Helper>
@@ -720,25 +769,25 @@ export default function CadastroPet() {
           {/* Nome do contato */}
           <div className="mb-5" {...errAttr('nomeContato')}>
             <FieldLabel htmlFor="nomeContato" required>Nome do contato</FieldLabel>
-            <input id="nomeContato" type="text" className="input-field" placeholder="Ex.: João Silva"
+            <input id="nomeContato" aria-invalid={!!errors.nomeContato} aria-describedby={errors.nomeContato ? "pet-error-nomeContato" : undefined} type="text" className="input-field" placeholder="Ex.: João Silva"
               value={form.nomeContato} onChange={field('nomeContato')} aria-required />
-            <ErrorText msg={errors.nomeContato} />
+            <ErrorText id="pet-error-nomeContato" msg={errors.nomeContato} />
           </div>
 
           {/* Telefone | Parentesco */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
             <div {...errAttr('telefoneContato')}>
               <FieldLabel htmlFor="telefoneContato" required>Telefone</FieldLabel>
-              <input id="telefoneContato" type="tel" className="input-field"
+              <input id="telefoneContato" aria-invalid={!!errors.telefoneContato} aria-describedby={errors.telefoneContato ? "pet-error-telefoneContato" : undefined} type="tel" className="input-field"
                 placeholder="(11) 99999-8888"
                 value={form.telefoneContato} onChange={phoneField('telefoneContato')} aria-required />
-              <ErrorText msg={errors.telefoneContato} />
+              <ErrorText id="pet-error-telefoneContato" msg={errors.telefoneContato} />
             </div>
             <div {...errAttr('parentesco')}>
               <FieldLabel htmlFor="parentesco" required>Parentesco / Relação</FieldLabel>
-              <input id="parentesco" type="text" className="input-field" placeholder="Ex.: Cônjuge, Pai, Irmão"
+              <input id="parentesco" aria-invalid={!!errors.parentesco} aria-describedby={errors.parentesco ? "pet-error-parentesco" : undefined} type="text" className="input-field" placeholder="Ex.: Cônjuge, Pai, Irmão"
                 value={form.parentesco} onChange={field('parentesco')} aria-required />
-              <ErrorText msg={errors.parentesco} />
+              <ErrorText id="pet-error-parentesco" msg={errors.parentesco} />
             </div>
           </div>
 
@@ -753,7 +802,7 @@ export default function CadastroPet() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <FieldLabel htmlFor="telefoneClinica">Telefone da Clínica</FieldLabel>
-              <input id="telefoneClinica" type="tel" className="input-field"
+              <input id="telefoneClinica" aria-invalid={!!errors.telefoneClinica} aria-describedby={errors.telefoneClinica ? "pet-error-telefoneClinica" : undefined} type="tel" className="input-field"
                 placeholder="(11) 3333-4444"
                 value={form.telefoneClinica} onChange={phoneField('telefoneClinica')} />
             </div>
@@ -780,7 +829,7 @@ export default function CadastroPet() {
             {isEdit ? 'Salvar alterações' : 'Cadastrar pet'}
           </button>
         </div>
-      </form>
+      </fieldset></form>
 
     </div>
   )

@@ -1,3 +1,4 @@
+import FormFeedback from '../components/FormFeedback'
 import { useState, useEffect } from 'react'
 import { PawPrint, Star, Save, Check, DollarSign, Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
 import Pill from '../components/Pill'
@@ -21,7 +22,7 @@ interface FormState {
 // ── Constants ─────────────────────────────────────────────────────────────────
 const CAPACIDADE_OPTS: { value: Exclude<Capacidade, ''>; label: string }[] = [
   { value: '1', label: '1 pet' }, { value: '2', label: '2 pets' },
-  { value: '3', label: '3 pets' }, { value: '4+', label: '4+ pets' },
+  { value: '3', label: '3 pets' }, { value: '4+', label: '4 pets' },
 ]
 const TEMPO_OPTS: { value: Exclude<TempoCuidado, ''>; label: string }[] = [
   { value: 'nunca', label: 'Nunca (primeira vez)' }, { value: 'menos1', label: 'Menos de 1 ano' },
@@ -86,7 +87,7 @@ function HostCalendar({ selected, onChange }: { selected: string[]; onChange: (d
     <div className="select-none">
       {/* Navigation */}
       <div className="flex items-center justify-between mb-4">
-        <button type="button" onClick={prevMonth}
+        <button type="button" aria-label="Mês anterior" onClick={prevMonth}
           className="p-1.5 rounded-lg hover:bg-subtle text-muted hover:text-text transition-colors">
           <ChevronLeft size={16} />
         </button>
@@ -96,7 +97,7 @@ function HostCalendar({ selected, onChange }: { selected: string[]; onChange: (d
             <p className="text-xs text-primary mt-0.5">{selectedThisMonth} dia{selectedThisMonth > 1 ? 's' : ''} selecionado{selectedThisMonth > 1 ? 's' : ''}</p>
           )}
         </div>
-        <button type="button" onClick={nextMonth}
+        <button type="button" aria-label="Próximo mês" onClick={nextMonth}
           className="p-1.5 rounded-lg hover:bg-subtle text-muted hover:text-text transition-colors">
           <ChevronRight size={16} />
         </button>
@@ -244,6 +245,7 @@ function CheckboxPills({ options, selected, onChange }: {
 }
 
 interface ApiHost {
+  housePhotos?: string[]; spacePhotos?: string[]
   hasOtherAnimals?: boolean; otherAnimalsDesc?: string; hasChildren?: boolean; childrenAge?: string
   worksOutside?: boolean; maxPets?: string; acceptedSizes?: string[]; acceptedSpecies?: string[]
   canAdminMeds?: boolean; specialNeedsExp?: boolean
@@ -276,9 +278,9 @@ function formToApi(f: FormState) {
   const price = parseFloat(f.pricePerDay)
   return {
     hasOtherAnimals: f.outrosAnimais === '' ? undefined : f.outrosAnimais === 'sim',
-    otherAnimalsDesc: f.descricaoAnimais || undefined,
+    otherAnimalsDesc: f.descricaoAnimais,
     hasChildren: f.criancas === '' ? undefined : f.criancas === 'sim',
-    childrenAge: f.faixaEtaria || undefined,
+    childrenAge: f.faixaEtaria,
     worksOutside: f.trabalhaFora === '' ? undefined : f.trabalhaFora === 'sim',
     maxPets: f.capacidadeMaxima || undefined,
     acceptedSizes: f.portesAceitos,
@@ -287,8 +289,8 @@ function formToApi(f: FormState) {
     specialNeedsExp: f.experienciaEspeciais === '' ? undefined : f.experienciaEspeciais === 'sim',
     hasHostedBefore: f.cuidouAntes === '' ? undefined : f.cuidouAntes === 'sim',
     hostingTime: f.tempoCuidado || undefined,
-    experiencedBreeds: f.racasExperiencia || undefined,
-    bio: f.sobreVoce || undefined,
+    experiencedBreeds: f.racasExperiencia,
+    bio: f.sobreVoce,
     pricePerDay: isNaN(price) || price <= 0 ? undefined : price,
     availableDates: f.availableDates,
   }
@@ -297,14 +299,18 @@ function formToApi(f: FormState) {
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function PerfilAnfitriao() {
   const [form, setForm] = useState<FormState>(INIT)
+  const [error, setError] = useState<string | null>(null)
+  const [loaded, setLoaded] = useState(false)
+  const [retry, setRetry] = useState(0)
+  const [photos, setPhotos] = useState<string[]>([])
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     api.get<ApiHost>('/hosts/me')
-      .then(h => setForm(prev => ({ ...prev, ...apiToForm(h) })))
-      .catch(() => {})
-  }, [])
+      .then(h => { setForm(prev => ({ ...prev, ...apiToForm(h) })); setLoaded(true); setError(null); setPhotos([...(h.housePhotos ?? []), ...(h.spacePhotos ?? [])]) })
+      .catch(() => setError('Não foi possível carregar seu espaço. Se ainda não o cadastrou, acesse o cadastro de anfitrião.'))
+  }, [retry])
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm(p => ({ ...p, [key]: value }))
@@ -318,17 +324,22 @@ export default function PerfilAnfitriao() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
+    if (!loaded || saving) return
+    if (!Number.isFinite(Number(form.pricePerDay)) || Number(form.pricePerDay) <= 0) { setError('Informe uma diária maior que zero.'); return }
+    setError(null)
+    setSaved(false)
     setSaving(true)
     try {
       await api.put('/hosts/me', formToApi(form))
       setSaved(true)
-    } catch { /* ignore */ } finally { setSaving(false) }
+    } catch (err) { setError(err instanceof Error ? err.message : 'Não foi possível salvar.') } finally { setSaving(false) }
   }
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 pb-12">
       <div>
-        <Pill>Anfitrião</Pill>
+        <FormFeedback message={error} retry={() => setRetry(v => v + 1)} /><a className="text-primary underline" href="/cadastro-anfitriao">Cadastrar meu espaço</a><Pill>Anfitrião</Pill>
+        {photos.length > 0 && <section aria-label="Fotos do espaço" className="flex flex-wrap gap-3 my-4">{photos.map(url => <div key={url}><img className="w-24 h-24 object-cover rounded" alt="Foto do espaço" src={(import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api').replace(/\/api$/, '') + url} /><button type="button" className="text-primary underline text-sm" onClick={async () => { try { await api.delete('/hosts/me/photos/' + encodeURIComponent(url.split('/').pop()!)); setPhotos(p => p.filter(v => v !== url)) } catch { setError('Não foi possível remover a foto.') } }}>Remover foto</button></div>)}</section>}
         <h1 className="font-display text-3xl font-bold text-text mt-3">Meu Espaço</h1>
         <p className="text-muted text-sm mt-1">Edite as informações do seu espaço e perfil de anfitrião.</p>
       </div>
@@ -472,7 +483,7 @@ export default function PerfilAnfitriao() {
               <Check size={15} /> Alterações salvas
             </span>
           )}
-          <button type="submit" disabled={saving} className="btn-gradient flex items-center gap-2 px-8 disabled:opacity-60">
+          <button type="submit" disabled={saving || !loaded} className="btn-gradient flex items-center gap-2 px-8 disabled:opacity-60">
             <Save size={16} /> {saving ? 'Salvando…' : 'Salvar alterações'}
           </button>
         </div>

@@ -31,7 +31,8 @@ export default function Login() {
         email: res.user.email,
         role: roleFromApi(res.user.role),
       })
-      navigate('/home')
+      const next = new URLSearchParams(window.location.search).get('next')
+      navigate(next && /^\/[a-z0-9/_-]*$/i.test(next) ? next : '/home')
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Erro ao entrar. Tente novamente.')
     } finally {
@@ -67,9 +68,9 @@ export default function Login() {
 
           <form onSubmit={handleLogin} className="flex flex-col gap-6">
             <div>
-              <label className="text-xs font-medium text-muted uppercase tracking-wider">Email</label>
+              <label htmlFor="login-email" className="text-xs font-medium text-muted uppercase tracking-wider">Email</label>
               <input
-                type="email"
+                id="login-email" autoComplete="email" type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="marina@email.com"
@@ -82,10 +83,10 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="text-xs font-medium text-muted uppercase tracking-wider">Senha</label>
+              <label htmlFor="login-password" className="text-xs font-medium text-muted uppercase tracking-wider">Senha</label>
               <div className="relative mt-2">
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  id="login-password" autoComplete="current-password" type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
@@ -97,6 +98,7 @@ export default function Login() {
                 />
                 <button
                   type="button"
+                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-0 bottom-2 text-muted hover:text-text transition-colors"
                 >
@@ -117,7 +119,7 @@ export default function Login() {
                 Cadastre-se
               </Link>
             </p>
-            <button className="hover:text-text transition-colors">Esqueceu sua senha?</button>
+            <Link to="/conta?purpose=reset" className="hover:text-text transition-colors">Esqueceu sua senha?</Link>
           </div>
         </div>
       </div>

@@ -1,4 +1,7 @@
-﻿import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
+import Ajuda from './pages/Ajuda'
+import Legal from './pages/Legal'
+import Conta from './pages/Conta'
+import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router-dom'
 import AppLayout from './layouts/AppLayout'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
@@ -22,13 +25,19 @@ import { useAuth, type UserRole } from './context/AuthContext'
 
 function RoleGuard({ forbiddenFor }: { forbiddenFor: UserRole[] }) {
   const { user } = useAuth()
-  if (user && forbiddenFor.includes(user.role)) {
+  const location = useLocation()
+  if (!user) return <Navigate to={'/login?next=' + encodeURIComponent(location.pathname)} replace />
+  if (forbiddenFor.includes(user.role)) {
     return <Navigate to="/home" replace />
   }
   return <Outlet />
 }
 
 export const router = createBrowserRouter([
+  { path: '/termos', element: <Legal /> },
+  { path: '/privacidade', element: <Legal privacy /> },
+  { path: '/ajuda', element: <Ajuda /> },
+  { path: '/conta', element: <Conta /> },
   {
     path: '/',
     element: <Landing />,
@@ -42,11 +51,12 @@ export const router = createBrowserRouter([
     element: <Cadastrar />,
   },
   {
-    path: '/cadastro-anfitriao',
-    element: <CadastroAnfitriao />,
+    element: <RoleGuard forbiddenFor={['tutor']} />,
+    children: [{ path: '/cadastro-anfitriao', element: <CadastroAnfitriao /> }],
   },
   {
-    element: <AppLayout />,
+    element: <RoleGuard forbiddenFor={[]} />,
+    children: [{ element: <AppLayout />,
     children: [
       { path: '/home',              element: <Home /> },
       { path: '/reservas',          element: <Reservas /> },
@@ -77,6 +87,6 @@ export const router = createBrowserRouter([
           { path: '/meu-espaco',      element: <PerfilAnfitriao /> },
         ],
       },
-    ],
+    ] }],
   },
 ])

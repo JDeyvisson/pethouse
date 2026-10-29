@@ -1,3 +1,4 @@
+import FormFeedback from '../components/FormFeedback'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Calendar, DollarSign, Search, Star, PawPrint, ClipboardList, BadgeCheck, ChevronRight, MessageCircle } from 'lucide-react'
@@ -15,6 +16,7 @@ interface TutorStats {
 }
 
 function HomeTutor() {
+  const [loadError, setLoadError] = useState<string | null>(null)
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const { user } = useAuth()
@@ -23,7 +25,7 @@ function HomeTutor() {
   useEffect(() => {
     api.get<TutorStats>('/dashboard/stats')
       .then(setStats)
-      .catch(() => {})
+      .catch(() => setLoadError('Não foi possível carregar os dados.'))
   }, [])
 
   const handleSearch = (e: React.FormEvent) => {
@@ -31,6 +33,7 @@ function HomeTutor() {
     navigate('/buscar')
   }
 
+  if (loadError) return <FormFeedback message={loadError} retry={() => window.location.reload()} />
   return (
     <div className="max-w-5xl mx-auto space-y-8">
       <div>
@@ -112,13 +115,14 @@ interface CuidadorStats {
 }
 
 function HomeCuidador() {
+  const [loadError, setLoadError] = useState<string | null>(null)
   const navigate = useNavigate()
   const { user } = useAuth()
   const { reservas } = useReservas()
   const [stats, setStats] = useState<CuidadorStats | null>(null)
 
   useEffect(() => {
-    api.get<CuidadorStats>('/dashboard/stats').then(setStats).catch(() => {})
+    api.get<CuidadorStats>('/dashboard/stats').then(setStats).catch(() => setLoadError('Não foi possível carregar os dados.'))
   }, [])
 
   const emAndamento = reservas.filter(r => r.status === 'em_andamento')
@@ -132,6 +136,7 @@ function HomeCuidador() {
     { label: 'Financeiro',       desc: 'Acompanhe seus ganhos',        icon: DollarSign,    path: '/financeiro' },
   ]
 
+  if (loadError) return <FormFeedback message={loadError} retry={() => window.location.reload()} />
   return (
     <div className="max-w-5xl mx-auto space-y-8">
       <div>

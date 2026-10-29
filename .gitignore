@@ -30,3 +30,7 @@ server/uploads/
 
 # Prisma generated client (regenerated on deploy)
 server/node_modules/
+
+server/private-uploads/
+playwright-report/
+test-results/

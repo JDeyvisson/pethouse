@@ -39,26 +39,16 @@ export const reviewService = {
   },
 
   async create(tutorId: string, input: { hostId: string; reservaId?: string; rating: number; comment: string }) {
-    if (input.rating < 1 || input.rating > 5) {
-      throw new AppError('INVALID_RATING', 'Rating deve ser entre 1 e 5', 400)
-    }
-
-    if (input.reservaId) {
-      const reserva = await prisma.reserva.findUnique({ where: { id: input.reservaId } })
-      if (!reserva || reserva.tutorId !== tutorId) {
-        throw new AppError('FORBIDDEN', 'Reserva não encontrada ou não pertence a você', 403)
-      }
-      if (reserva.status !== 'CONCLUIDA') {
-        throw new AppError('INVALID_STATUS', 'Só é possível avaliar reservas concluídas', 400)
-      }
-      const existing = await reviewRepository.findByReserva(input.reservaId)
-      if (existing) {
-        throw new AppError('ALREADY_REVIEWED', 'Esta reserva já foi avaliada', 409)
-      }
-    }
-
-    const review = await reviewRepository.create({ ...input, tutorId })
-    await reviewRepository.updateHostStats(input.hostId)
-    return review
+    if (!input.reservaId) throw new AppError('RESERVA_REQUIRED', 'Selecione uma reserva concluída')
+    return prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${input.hostId}, 2))::text`
+      const reserva = await tx.reserva.findUnique({ where: { id: input.reservaId } })
+      if (!reserva || reserva.tutorId !== tutorId || reserva.hostId !== input.hostId) throw new AppError('FORBIDDEN', 'Reserva não pertence ao tutor e anfitrião informados', 403)
+      if (reserva.status !== 'CONCLUIDA') throw new AppError('INVALID_STATUS', 'Avalie apenas reservas concluídas')
+      const review = await tx.review.create({ data: { rating: input.rating, comment: input.comment, tutorId, hostId: reserva.hostId, reservaId: reserva.id } })
+      const aggregate = await tx.review.aggregate({ where: { hostId: reserva.hostId }, _avg: { rating: true }, _count: { id: true } })
+      await tx.hostProfile.update({ where: { id: reserva.hostId }, data: { averageRating: aggregate._avg.rating, reviewCount: aggregate._count.id } })
+      return review
+    })
   },
 }

@@ -62,11 +62,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       <aside
         className={`fixed left-0 top-0 h-screen w-64 lg:w-56 flex flex-col py-6 px-3 bg-surface border-r border-subtle z-40
           transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
-          ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
+          ${isOpen ? 'visible translate-x-0' : 'invisible -translate-x-full'} lg:visible lg:translate-x-0`}
       >
         <div className="flex items-center justify-between px-2 mb-2 lg:hidden">
           <span className="text-xs font-semibold text-muted uppercase tracking-widest">Menu</span>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-text hover:bg-subtle transition-colors">
+          <button aria-label="Fechar menu" onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-text hover:bg-subtle transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -96,11 +96,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
 
         {/* Account card */}
-        <div className="relative mt-4 mx-1 rounded-2xl p-4 text-white overflow-hidden bg-coral">
+        <div className="relative mt-4 mx-1 rounded-2xl p-4 text-[#1c1c1e] overflow-hidden bg-coral">
           <PawPrint size={64} color="white" className="absolute -bottom-3 -right-3 opacity-15 rotate-12" />
-          <p className="relative text-[10px] font-semibold tracking-widest opacity-80 uppercase mb-1">Conta Atual</p>
+          <p className="relative text-[10px] font-semibold tracking-widest uppercase mb-1">Conta Atual</p>
           <p className="relative font-bold text-sm truncate">{user?.name ?? 'Usuário'}</p>
-          <p className="relative text-xs opacity-75">{roleLabels[role]}</p>
+          <p className="relative text-xs">{roleLabels[role]}</p>
         </div>
 
         <button

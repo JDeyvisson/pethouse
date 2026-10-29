@@ -1,4 +1,4 @@
-﻿export default function PetHouseLogo({ dark = false }: { dark?: boolean }) {
+export default function PetHouseLogo({ dark = false }: { dark?: boolean }) {
   return (
     <div className="flex items-center gap-2 group cursor-default">
       <div className="relative transition-transform duration-300 group-hover:rotate-[-6deg] group-hover:scale-105">

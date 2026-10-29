@@ -1,4 +1,5 @@
-﻿import { RouterProvider } from 'react-router-dom'
+import AppFeedback from './components/AppFeedback'
+import { RouterProvider } from 'react-router-dom'
 import { router } from './routes'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
@@ -9,7 +10,7 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <ReservasProvider>
-          <RouterProvider router={router} />
+          <AppFeedback /><RouterProvider router={router} />
         </ReservasProvider>
       </AuthProvider>
     </ThemeProvider>

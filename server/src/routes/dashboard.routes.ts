@@ -1,3 +1,5 @@
+import { z } from 'zod'
+import { requiredText, phone as phoneSchema } from '../schemas/common'
 import { Router, Request, Response, NextFunction } from 'express'
 import { verifyToken } from '../middleware/auth'
 import { prisma } from '../lib/prisma'
@@ -19,12 +21,12 @@ router.get('/users/me', async (req: Request, res: Response, next: NextFunction) 
 
 router.patch('/users/me', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, phone } = req.body as { name?: string; phone?: string }
+    const { name, phone } = z.object({ name: requiredText(100).min(2).optional(), phone: z.union([phoneSchema, z.literal(''), z.null()]).optional() }).parse(req.body)
     const user = await prisma.user.update({
       where: { id: req.user!.sub },
       data: {
         ...(name?.trim() ? { name: name.trim() } : {}),
-        phone: phone?.trim() || null,
+        ...(phone !== undefined ? { phone: phone || null } : {}),
       },
       select: { id: true, name: true, email: true, role: true, phone: true, photoUrl: true },
     })

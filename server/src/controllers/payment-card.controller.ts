@@ -4,8 +4,8 @@ import { paymentCardService } from '../services/payment-card.service'
 
 const createSchema = z.object({
   brand: z.string().min(1),
-  last4: z.string().length(4),
-  expiry: z.string().min(4),
+  last4: z.string().regex(/^\d{4}$/, 'Informe quatro dígitos'),
+  expiry: z.string().regex(/^(0[1-9]|1[0-2])\/\d{2}$/, 'Use MM/AA').refine(v => { const [m, y] = v.split('/').map(Number); return new Date(2000 + y, m, 1) > new Date() }, 'Cartão vencido'),
   holder: z.string().optional(),
 })
 

@@ -1,43 +1,44 @@
+import { text, requiredText, phone, birthDate, booleanField } from './common'
 import { z } from 'zod'
 
-const yesNo = z.enum(['sim', 'nao'])
-const behavior = z.enum(['muito_sociavel', 'sociavel', 'indiferente', 'agressivo']).optional()
+const behavior = z.enum(['muito_sociavel', 'sociavel', 'indiferente', 'agressivo'])
 
 export const petSchema = z.object({
-  name: z.string().min(1, 'Nome obrigatório'),
-  species: z.string().min(1, 'Espécie obrigatória'),
-  breed: z.string().min(1, 'Raça obrigatória'),
-  sex: z.string().min(1, 'Sexo obrigatório'),
-  size: z.string().min(1, 'Porte obrigatório'),
-  rg: z.string().optional(),
-  birthDate: z.string().optional().transform(s => s ? new Date(s + 'T12:00:00.000Z') : undefined),
+  requestKey: z.string().uuid().optional(),
+  name: requiredText(80),
+  species: z.enum(['Cachorro', 'Gato', 'Coelho', 'Ave', 'Réptil', 'Roedor', 'Outro']),
+  breed: requiredText(100),
+  sex: z.enum(['Macho', 'Fêmea', 'Indeterminado']),
+  size: z.enum(['Pequeno (até 10 kg)', 'Médio (10–25 kg)', 'Grande (25–45 kg)', 'Gigante (acima de 45 kg)']),
+  rg: text(30).optional(),
+  birthDate,
 
-  vaccinesUpToDate: z.coerce.boolean().optional(),
-  usesMedication: z.coerce.boolean().optional(),
-  medicationDesc: z.string().optional(),
-  healthCondition: z.string().optional(),
-  foodRestriction: z.coerce.boolean().optional(),
-  foodRestDesc: z.string().optional(),
-  foodBrand: z.string().optional(),
+  vaccinesUpToDate: booleanField,
+  usesMedication: booleanField,
+  medicationDesc: text().optional(),
+  healthCondition: text().optional(),
+  foodRestriction: booleanField,
+  foodRestDesc: text().optional(),
+  foodBrand: requiredText(200),
 
   behaviorDogs: behavior,
   behaviorCats: behavior,
   behaviorKids: behavior,
-  energyLevel: z.coerce.number().min(1).max(5).optional(),
-  hasEscaped: z.coerce.boolean().optional(),
-  escapeDesc: z.string().optional(),
-  fearOfNoise: z.coerce.boolean().optional(),
-  staysAlone: z.coerce.boolean().optional(),
-  sleepsAlone: z.coerce.boolean().optional(),
-  neutered: z.coerce.boolean().optional(),
-  behaviorNotes: z.string().optional(),
+  energyLevel: z.coerce.number().int().min(1).max(5),
+  hasEscaped: booleanField,
+  escapeDesc: text().optional(),
+  fearOfNoise: booleanField,
+  staysAlone: booleanField,
+  sleepsAlone: booleanField,
+  neutered: booleanField,
+  behaviorNotes: text().optional(),
 
-  emergencyName: z.string().optional(),
-  emergencyPhone: z.string().optional(),
-  emergencyRelation: z.string().optional(),
-  vetClinic: z.string().optional(),
-  vetPhone: z.string().optional(),
-  vetAddress: z.string().optional(),
+  emergencyName: requiredText(100),
+  emergencyPhone: phone,
+  emergencyRelation: requiredText(100),
+  vetClinic: text().optional(),
+  vetPhone: z.union([phone, z.literal('')]).optional(),
+  vetAddress: text().optional(),
 })
 
 export type PetInput = z.infer<typeof petSchema>
